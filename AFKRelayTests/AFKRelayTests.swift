@@ -1,14 +1,14 @@
 //
-//  ExpIRLTests.swift
-//  ExpIRLTests
+//  AFKRelayTests.swift
+//  AFKRelayTests
 //
 //  Created by 野嶋伊織 on 7/26/26.
 //
 
 import Testing
-@testable import ExpIRL
+@testable import AFKRelay
 
-struct ExpIRLTests {
+struct AFKRelayTests {
 
     @Test
     func arenaLifecycleUsesValidGameplayKitTransitions() {

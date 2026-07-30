@@ -1,6 +1,14 @@
-# Exp IRL
+<p align="center">
+  <img
+    src="Brand/AppIcon/AFKRelay-AppIcon-Preview.png"
+    width="180"
+    alt="AFK Relay app icon"
+  >
+</p>
 
-Exp IRL is a native iOS survival game where real-world walking becomes tactical
+<h1 align="center">AFK Relay</h1>
+
+AFK Relay is a native iOS survival game where real-world walking becomes tactical
 movement. Every eligible HealthKit step mints one movement token. In the arena,
 the player has no attack: survival depends on positioning enemies so their
 telegraphed attacks hit one another.
@@ -41,8 +49,8 @@ explicit product decision.
 
 ## Open and run
 
-1. Open `ExpIRL.xcodeproj` in Xcode.
-2. Select the `ExpIRL` scheme.
+1. Open `AFKRelay.xcodeproj` in Xcode.
+2. Select the `AFKRelay` scheme.
 3. Choose an iPhone simulator.
 4. Run with **Product → Run** (`⌘R`).
 
@@ -51,8 +59,8 @@ can also be started from this repository root:
 
 ```sh
 xcodebuild \
-  -project ExpIRL.xcodeproj \
-  -scheme ExpIRL \
+  -project AFKRelay.xcodeproj \
+  -scheme AFKRelay \
   -destination 'generic/platform=iOS Simulator' \
   build
 ```
@@ -63,13 +71,15 @@ domain economy will use a fake health provider in deterministic tests.
 ## Repository layout
 
 ```text
-ExpIRL/
+AFKRelay/
   App/                 SwiftUI entry point and application shell
   Game/                SpriteKit and GameplayKit integration
-  Assets.xcassets/     App icons, colors, and visual assets
-ExpIRLTests/           Swift Testing unit and integration tests
-ExpIRLUITests/         XCTest UI tests
-ExpIRL.xcodeproj/      Xcode project
+  AppIcon.icon/        Layered, appearance-aware production app icon
+  Assets.xcassets/     Accent color and additional visual assets
+AFKRelayTests/          Swift Testing unit and integration tests
+AFKRelayUITests/        XCTest UI tests
+AFKRelay.xcodeproj/     Xcode project
+Brand/                  Visual identity sources and generated-art provenance
 ```
 
 ## Documentation

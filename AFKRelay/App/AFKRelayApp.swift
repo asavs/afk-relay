@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct ExpIRLApp: App {
+struct AFKRelayApp: App {
     var body: some Scene {
         WindowGroup {
             AppShellView()

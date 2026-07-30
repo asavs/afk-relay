@@ -1,13 +1,13 @@
 //
-//  ExpIRLUITests.swift
-//  ExpIRLUITests
+//  AFKRelayUITests.swift
+//  AFKRelayUITests
 //
 //  Created by 野嶋伊織 on 7/26/26.
 //
 
 import XCTest
 
-final class ExpIRLUITests: XCTestCase {
+final class AFKRelayUITests: XCTestCase {
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.

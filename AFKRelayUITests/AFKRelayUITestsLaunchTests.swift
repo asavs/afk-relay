@@ -1,13 +1,13 @@
 //
-//  ExpIRLUITestsLaunchTests.swift
-//  ExpIRLUITests
+//  AFKRelayUITestsLaunchTests.swift
+//  AFKRelayUITests
 //
 //  Created by 野嶋伊織 on 7/26/26.
 //
 
 import XCTest
 
-final class ExpIRLUITestsLaunchTests: XCTestCase {
+final class AFKRelayUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

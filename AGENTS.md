@@ -31,8 +31,12 @@ GitHub Wiki before making behavior or architecture changes.
 - Do not pass HealthKit framework types across the health adapter boundary.
 - Do not add a custom backend, accounts, cloud saves, analytics, or spoof
   detection without a new explicit decision.
-- Keep combat mechanics independent of theme and art.
-- Use primitive sci-fi shapes for MVP presentation.
+- Keep combat mechanics independent of theme and art. Gameplay definitions use
+  semantic presentation roles; framework rendering resolves concrete resources
+  through a replaceable catalog.
+- Use primitive sci-fi shapes for the MVP arena's placeholder presentation.
+  Do not treat that temporary gameplay skin as the permanent product identity
+  or as a restriction on future player-selectable themes.
 
 ## Change discipline
 
