@@ -23,6 +23,11 @@ struct AppShellView: View {
             content
         }
         .preferredColorScheme(.dark)
+        // Immersive chrome removal is arena-only; every other surface keeps
+        // the system status bar.
+        .statusBarHidden(
+            coordinator.screen == .running || coordinator.screen == .paused
+        )
         .sheet(isPresented: $showsSettings) {
             GameSettingsView(
                 diagnostics: $coordinator.diagnosticsOptions,
