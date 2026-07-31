@@ -64,7 +64,18 @@ Swift 6 with complete concurrency checking and Main Actor default isolation.
 3. Choose an iPhone simulator.
 4. Run with **Product → Run** (`⌘R`).
 
-Run the test suite with **Product → Test** (`⌘U`). Command-line verification:
+Run the test suite with **Product → Test** (`⌘U`). Two test plans organize
+verification:
+
+- **AFKRelay-Full** (default): every unit, architecture, launch, and UI
+  scenario test. Intended for the simulator, where the architecture checks
+  can read the source tree.
+- **AFKRelay-Device**: the unit suite plus the three ordered UI scenarios
+  (seeded gameplay loop, live HealthKit onboarding, instrumented arena
+  performance) without launch-screenshot or launch-time churn. Intended for
+  signed physical devices, which must stay unlocked while UI tests run.
+
+Command-line verification:
 
 ```sh
 ./scripts/check-architecture.sh
@@ -72,7 +83,15 @@ Run the test suite with **Product → Test** (`⌘U`). Command-line verification
 xcodebuild \
   -project AFKRelay.xcodeproj \
   -scheme AFKRelay \
+  -testPlan AFKRelay-Full \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  test
+
+xcodebuild \
+  -project AFKRelay.xcodeproj \
+  -scheme AFKRelay \
+  -testPlan AFKRelay-Device \
+  -destination 'platform=iOS,name=<your iPhone>' \
   test
 ```
 

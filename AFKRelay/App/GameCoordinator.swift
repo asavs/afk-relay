@@ -64,6 +64,10 @@ final class GameCoordinator {
             repository: composition.progressRepository
         )
         arenaScene = ArenaScene(catalog: composition.presentationCatalog)
+        playerHealth = composition.balance.playerHitPoints
+        // Observers do not fire during init; mirror to the scene directly.
+        diagnosticsOptions = composition.initialDiagnosticsOptions
+        arenaScene.diagnosticsOptions = composition.initialDiagnosticsOptions
         progressPersistence.setFailureHandler { [weak self] _ in
             self?.progressMessage = "Local run records could not be saved."
         }
@@ -76,7 +80,7 @@ final class GameCoordinator {
         ArenaHUDModel(
             availableTokens: availableTokens,
             playerHealth: playerHealth,
-            maximumPlayerHealth: MVPBalance.v1.playerHitPoints,
+            maximumPlayerHealth: composition.balance.playerHitPoints,
             survivalDuration: survivalDuration,
             tokensSpentThisRun: tokensSpentThisRun,
             refreshState: refreshState
@@ -85,7 +89,7 @@ final class GameCoordinator {
 
     var diagnosticsHUDModel: ArenaDiagnosticsHUDModel {
         let snapshot = simulation?.snapshot
-        let balance = simulation?.balance ?? .v1
+        let balance = simulation?.balance ?? composition.balance
         let fixedStepHz = 1 / ArenaSimulation.fixedTimeStep
         return ArenaDiagnosticsHUDModel(
             fixedStepHz: Int(fixedStepHz.rounded()),
@@ -184,8 +188,9 @@ final class GameCoordinator {
         tokensSpentThisRun = 0
         friendlyFireDefeatsThisRun = 0
         survivalDuration = 0
-        playerHealth = MVPBalance.v1.playerHitPoints
+        playerHealth = composition.balance.playerHitPoints
         simulation = ArenaSimulation(
+            balance: composition.balance,
             tutorialCompleted: playerProgress.tutorialCompleted
         )
         screen = .running

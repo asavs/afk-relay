@@ -23,4 +23,17 @@ struct DiagnosticsOptions: Equatable, Sendable {
         showsFrameMetrics: false
     )
 
+    /// Every inspection layer at once: the worst-case render load, used by
+    /// the performance scenario so measurements include diagnostics cost.
+    static let inspection = DiagnosticsOptions(
+        isEnabled: true,
+        showsEntityIdentifiers: true,
+        showsAttackIdentifiers: true,
+        showsIntentPaths: true,
+        showsResolvedPaths: true,
+        showsCollisionNormals: true,
+        showsPursuitVectors: true,
+        showsPhaseTiming: true,
+        showsFrameMetrics: true
+    )
 }

@@ -1,0 +1,32 @@
+{
+  "configurations" : [
+    {
+      "id" : "6D2A94E1-58B4-4E0C-9A1F-000000000001",
+      "name" : "Default",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:AFKRelay.xcodeproj",
+        "identifier" : "EC132CDB3016E70900C93960",
+        "name" : "AFKRelayTests"
+      }
+    },
+    {
+      "parallelizable" : false,
+      "target" : {
+        "containerPath" : "container:AFKRelay.xcodeproj",
+        "identifier" : "EC132CE53016E70A00C93960",
+        "name" : "AFKRelayUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

@@ -10,11 +10,20 @@ struct AppComposition {
     let presentationCatalog: any ArenaPresentationCatalog
     let calendar: Calendar
     let now: @MainActor @Sendable () -> Date
+    var balance: MVPBalance = .v1
+    var initialDiagnosticsOptions: DiagnosticsOptions = .disabled
 
     static func current() -> AppComposition {
 #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
-            return uiTesting()
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("--ui-testing-live-health") {
+            return uiTestingLiveHealth()
+        }
+        if arguments.contains("--ui-testing") {
+            if arguments.contains("--ui-testing-perf-arena") {
+                return uiTestingPerfArena()
+            }
+            return uiTesting(steps: seededStepArgument() ?? 12_000)
         }
 #endif
         return live()
@@ -42,16 +51,101 @@ struct AppComposition {
     }
 
 #if DEBUG
-    static func uiTesting() -> AppComposition {
+    static func uiTesting(steps: Int64 = 12_000) -> AppComposition {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         return AppComposition(
-            stepReader: FixedStepTotalReader(count: 12_000, now: now),
+            stepReader: FixedStepTotalReader(count: steps, now: now),
             ledgerRepository: InMemoryLedgerRepository(),
             progressRepository: InMemoryPlayerProgressRepository(),
             presentationCatalog: DiagnosticCatalog(),
             calendar: Calendar(identifier: .gregorian),
             now: { now }
         )
+    }
+
+    /// Live HealthKit against disposable storage: the genuine permission and
+    /// first-connection flow can run from scratch on every launch without
+    /// ever touching the real player container.
+    static func uiTestingLiveHealth() -> AppComposition {
+        let directory = FileManager.default.temporaryDirectory
+            .appending(
+                path: "AFKRelayUITests-\(UUID().uuidString)",
+                directoryHint: .isDirectory
+            )
+        return AppComposition(
+            stepReader: HealthKitStepReader(now: { .now }),
+            ledgerRepository: FileLedgerRepository(directory: directory),
+            progressRepository: FilePlayerProgressRepository(directory: directory),
+            presentationCatalog: DiagnosticCatalog(),
+            calendar: .autoupdatingCurrent,
+            now: { .now }
+        )
+    }
+
+    /// A saturated arena for instrumented measurement: completed tutorial,
+    /// seeded wallet, rapid spawning to the enemy cap, enough player health
+    /// to survive the measurement window, and every diagnostics layer on.
+    static func uiTestingPerfArena() -> AppComposition {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let seededSteps: Int64 = 1_000_000
+        let state = EconomyState(
+            eligibilityStart: now,
+            observedStepHighWater: seededSteps,
+            lifetimeStepsCredited: seededSteps,
+            hasReadableStepData: true
+        )
+        return AppComposition(
+            stepReader: FixedStepTotalReader(count: seededSteps, now: now),
+            ledgerRepository: InMemoryLedgerRepository(
+                record: LedgerRecord(generation: 1, state: state)
+            ),
+            progressRepository: InMemoryPlayerProgressRepository(
+                state: PlayerProgressState(tutorialCompleted: true)
+            ),
+            presentationCatalog: DiagnosticCatalog(),
+            calendar: Calendar(identifier: .gregorian),
+            now: { now },
+            balance: perfArenaBalance,
+            initialDiagnosticsOptions: .inspection
+        )
+    }
+
+    /// `MVPBalance.v1` with pressure reached quickly and a player durable
+    /// enough to keep the swarm rendering for the whole measurement window.
+    /// This is a measurement harness, not a gameplay configuration.
+    private static let perfArenaBalance = MVPBalance(
+        arenaSize: .init(x: 1000, y: 1500),
+        playerRadius: 30,
+        playerSpeed: 240,
+        playerHitPoints: 2_000,
+        movementDistancePerToken: 43.2,
+        enemyRadius: 34,
+        enemySpeed: 90,
+        tutorialEnemySpeed: 75,
+        enemyHitPoints: 2,
+        sweepTriggerDistance: 200,
+        sweepReach: 190,
+        sweepArcDegrees: 120,
+        sweepBladeDegrees: 28,
+        sweepTelegraphDuration: 1,
+        sweepActiveDuration: 0.45,
+        sweepRecoveryDuration: 0.75,
+        sweepDamage: 1,
+        spawnInitialInterval: 0.5,
+        spawnMinimumInterval: 0.5,
+        spawnRampDuration: 1,
+        enemyCap: 20
+    )
+
+    private static func seededStepArgument() -> Int64? {
+        for argument in ProcessInfo.processInfo.arguments {
+            if let value = argument.wholeMatch(
+                of: #/--ui-testing-steps=(\d+)/#
+            )?.1 {
+                return Int64(value)
+            }
+        }
+        return nil
     }
 #endif
 }

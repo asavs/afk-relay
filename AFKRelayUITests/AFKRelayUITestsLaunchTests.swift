@@ -37,3 +37,16 @@ nonisolated final class AFKRelayUITestsLaunchTests: XCTestCase {
         add(attachment)
     }
 }
+
+// Launch-time measurement performs several cold launches by design; it runs
+// once (not per UI configuration) and only from the simulator test plan.
+nonisolated final class AFKRelayLaunchPerformanceTests: XCTestCase {
+    @MainActor
+    func testLaunchPerformance() throws {
+        measure(metrics: [XCTApplicationLaunchMetric()]) {
+            let app = XCUIApplication()
+            app.launchArguments = ["--ui-testing"]
+            app.launch()
+        }
+    }
+}
