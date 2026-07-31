@@ -5,23 +5,23 @@ struct DiagnosticsSettingsView: View {
 
     var body: some View {
         Section {
-            Toggle("Enable inspection", isOn: $options.isEnabled)
+            Toggle("Enable Inspection", isOn: $options.isEnabled)
 
             Group {
-                Toggle("Entity identifiers", isOn: $options.showsEntityIdentifiers)
-                Toggle("Attack identifiers", isOn: $options.showsAttackIdentifiers)
-                Toggle("Intended paths", isOn: $options.showsIntentPaths)
-                Toggle("Resolved paths", isOn: $options.showsResolvedPaths)
-                Toggle("Collision normals", isOn: $options.showsCollisionNormals)
-                Toggle("Pursuit vectors", isOn: $options.showsPursuitVectors)
-                Toggle("Phase timing", isOn: $options.showsPhaseTiming)
-                Toggle("Frame metrics", isOn: $options.showsFrameMetrics)
+                Toggle("Entity Identifiers", isOn: $options.showsEntityIdentifiers)
+                Toggle("Attack Identifiers", isOn: $options.showsAttackIdentifiers)
+                Toggle("Intended Paths", isOn: $options.showsIntentPaths)
+                Toggle("Resolved Paths", isOn: $options.showsResolvedPaths)
+                Toggle("Collision Normals", isOn: $options.showsCollisionNormals)
+                Toggle("Pursuit Vectors", isOn: $options.showsPursuitVectors)
+                Toggle("Phase Timing", isOn: $options.showsPhaseTiming)
+                Toggle("Frame Metrics", isOn: $options.showsFrameMetrics)
             }
             .disabled(!options.isEnabled)
         } header: {
-            Text("Inspection overlay")
+            Text("Developer")
         } footer: {
-            Text("The overlay only reveals simulation state. It never changes movement, collisions, attacks, or the step economy.")
+            Text("Shows what the game is doing under the hood. It never changes gameplay or your movement bank.")
         }
     }
 }

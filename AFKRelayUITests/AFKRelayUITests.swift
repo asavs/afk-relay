@@ -59,7 +59,9 @@ nonisolated final class AFKRelayUITests: XCTestCase {
             element(app, "run-summary").waitForExistence(timeout: 120)
         )
         XCTAssertTrue(app.staticTexts["Run Complete"].exists)
-        XCTAssertTrue(app.staticTexts["Records only"].exists)
+        XCTAssertTrue(
+            app.staticTexts["Runs are recorded on this iPhone only."].exists
+        )
 
         // The wallet survives death and reflects only real spending.
         tap(app, button: "return-home", toReveal: "game-home")

@@ -6,7 +6,7 @@ struct WalletBankView: View {
     var body: some View {
         DiagnosticPanel {
             VStack(spacing: AFKRelayUIStyle.compactSpacing) {
-                Label("Movement bank", systemImage: "shoeprints.fill")
+                Label("Movement Bank", systemImage: "shoeprints.fill")
                     .font(.headline)
                     .foregroundStyle(.secondary)
 
@@ -23,7 +23,7 @@ struct WalletBankView: View {
             .frame(maxWidth: .infinity)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Movement bank")
+        .accessibilityLabel("Movement Bank")
         .accessibilityValue("\(availableTokens.formatted(.number.grouping(.automatic))) tokens available")
         .accessibilityIdentifier("movement-bank")
     }

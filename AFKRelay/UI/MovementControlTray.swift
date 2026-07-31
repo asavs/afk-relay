@@ -10,7 +10,7 @@ struct MovementControlTray: View {
             VirtualJoystickView(
                 isEnabled: availableTokens > 0 && isRunActive,
                 disabledAccessibilityValue: isRunActive
-                    ? "No movement tokens"
+                    ? "Out of movement tokens — walk to earn more"
                     : "Run paused",
                 onIntentChanged: onIntentChanged
             )
@@ -39,9 +39,9 @@ struct MovementControlTray: View {
         if !isRunActive {
             "Run paused"
         } else if availableTokens > 0 {
-            "\(availableTokens) movement tokens"
+            "\(availableTokens.formatted(.number.grouping(.automatic))) movement tokens"
         } else {
-            "No movement — walk to refill"
+            "Out of tokens — walk to earn more"
         }
     }
 

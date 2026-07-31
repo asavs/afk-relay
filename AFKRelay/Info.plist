@@ -5,7 +5,7 @@
 	<key>CFBundleDisplayName</key>
 	<string>AFK Relay</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>AFK Relay reads your step total to fund movement in the arena.</string>
+	<string>AFK Relay reads your step count from Apple Health so the steps you walk become movement in the game. Your step data is used only on this iPhone and is never uploaded.</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

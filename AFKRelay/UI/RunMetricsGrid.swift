@@ -12,17 +12,19 @@ struct RunMetricsGrid: View {
                     survived
                     defeats
                     spent
-                    reward
                 }
             } else {
-                Grid(horizontalSpacing: AFKRelayUIStyle.compactSpacing) {
+                Grid(
+                    horizontalSpacing: AFKRelayUIStyle.compactSpacing,
+                    verticalSpacing: AFKRelayUIStyle.compactSpacing
+                ) {
                     GridRow {
                         survived
                         defeats
                     }
                     GridRow {
                         spent
-                        reward
+                            .gridCellColumns(2)
                     }
                 }
             }
@@ -40,9 +42,9 @@ struct RunMetricsGrid: View {
 
     private var defeats: some View {
         RunMetricView(
-            title: "Enemy defeats",
+            title: "Enemies baited",
             value: model.friendlyFireDefeats.formatted(),
-            systemImage: "burst.fill"
+            systemImage: "target"
         )
     }
 
@@ -51,14 +53,6 @@ struct RunMetricsGrid: View {
             title: "Tokens spent",
             value: model.tokensSpent.formatted(),
             systemImage: "shoeprints.fill"
-        )
-    }
-
-    private var reward: some View {
-        RunMetricView(
-            title: "Reward",
-            value: "Records only",
-            systemImage: "chart.line.uptrend.xyaxis"
         )
     }
 }

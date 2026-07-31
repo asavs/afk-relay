@@ -37,32 +37,28 @@ struct GameSettingsView: View {
                     .disabled(!refreshState.permitsManualRetry)
 
                     Button(
-                        "Open System Settings",
-                        systemImage: "gear",
+                        "Open Settings",
+                        systemImage: "arrow.up.forward.app",
                         action: onOpenSystemSettings
                     )
                 } header: {
                     Text("Steps")
                 } footer: {
-                    Text("If no step data is readable, review AFK Relay’s access in Settings and try again.")
+                    Text("Not seeing your steps? Review AFK Relay’s access in Settings, then try again.")
                 }
 
                 DiagnosticsSettingsView(options: $diagnostics)
 
-                Section("Accessibility") {
-                    Label(
-                        "Text, contrast, color differentiation, and reduced motion follow your system settings.",
-                        systemImage: "accessibility"
-                    )
-                }
-
-                Section("About this build") {
-                    LabeledContent("Presentation", value: "Diagnostic primitives")
-                    LabeledContent("Economy", value: "1 step = 1 token")
-                    LabeledContent("Storage", value: "On this iPhone")
+                Section {
+                    LabeledContent("Movement", value: "1 step = 1 token")
+                    LabeledContent("Your data", value: "Stays on this iPhone")
+                } header: {
+                    Text("About This Build")
+                } footer: {
+                    Text("Text size, contrast, Differentiate Without Color, and Reduce Motion all follow your iPhone settings.")
                 }
             }
-            .navigationTitle(isRunActive ? "Paused" : "Settings")
+            .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
         }
         .accessibilityIdentifier("game-settings")

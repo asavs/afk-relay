@@ -16,6 +16,11 @@ nonisolated enum GameCoordinatorError: Error, Equatable, Sendable {
     case missingLedger
 }
 
+extension GameCoordinator {
+    static let interruptedConnectionMessage =
+        "Setting up Apple Health was interrupted. Try again."
+}
+
 nonisolated enum StepRefreshOutcome: Equatable, Sendable {
     case current
     case noReadableData
@@ -69,7 +74,7 @@ final class GameCoordinator {
         diagnosticsOptions = composition.initialDiagnosticsOptions
         arenaScene.diagnosticsOptions = composition.initialDiagnosticsOptions
         progressPersistence.setFailureHandler { [weak self] _ in
-            self?.progressMessage = "Local run records could not be saved."
+            self?.progressMessage = "Your run history couldn’t be saved to this iPhone."
         }
         arenaScene.fixedStepHandler = { [weak self] duration in
             self?.advanceFixedStep(duration: duration)
@@ -310,7 +315,7 @@ final class GameCoordinator {
                 self.refreshState = .idle
             } catch {
                 self.refreshState = .persistenceBlocked(
-                    message: "The reset could not be saved. No new steps were credited."
+                    message: "The reset couldn’t be saved. Nothing was changed — try again."
                 )
             }
         }
@@ -329,7 +334,7 @@ final class GameCoordinator {
                 playerProgress = try await composition.progressRepository.load()
             } catch {
                 playerProgress = PlayerProgressState()
-                progressMessage = "Local run records could not be read. Gameplay remains available."
+                progressMessage = "Your run history couldn’t be loaded. You can still play — new runs will be saved."
             }
 
             guard let record = try await composition.ledgerRepository.load() else {
@@ -353,15 +358,10 @@ final class GameCoordinator {
                 screen = .onboarding
                 refreshState = .idle
             }
-        } catch LedgerPersistenceError.corruptUnrecoverable {
-            screen = .economyRecovery
-            refreshState = .persistenceBlocked(
-                message: "Both saved movement-bank generations are unreadable."
-            )
         } catch {
             screen = .economyRecovery
             refreshState = .persistenceBlocked(
-                message: "The saved movement bank could not be opened."
+                message: "Your saved movement bank couldn’t be opened."
             )
         }
     }
@@ -402,12 +402,12 @@ final class GameCoordinator {
                 try await composition.stepReader.requestAccess()
             } catch is CancellationError {
                 refreshState = .recoverableFailure(
-                    message: "The step connection was interrupted. Try again."
+                    message: Self.interruptedConnectionMessage
                 )
                 return
             } catch {
                 refreshState = .recoverableFailure(
-                    message: "Apple Health could not complete the Steps request. Try again or review access in Settings."
+                    message: "AFK Relay couldn’t finish setting up step access. Try again, or review AFK Relay’s access in Settings."
                 )
                 return
             }
@@ -431,7 +431,7 @@ final class GameCoordinator {
                 try await ledger.retryPersistence()
             } catch {
                 refreshState = .persistenceBlocked(
-                    message: "The movement bank could not be saved. Retry before playing."
+                    message: "Your movement bank couldn’t be saved. Try again before starting a run."
                 )
                 return
             }
@@ -457,7 +457,7 @@ final class GameCoordinator {
     ) async -> StepRefreshOutcome {
         guard let refreshService else {
             refreshState = .recoverableFailure(
-                message: "The local step connection is unavailable. Try again."
+                message: "AFK Relay isn’t connected to Apple Health yet. Tap Connect Steps to get started."
             )
             return .recoverableFailure
         }
@@ -480,14 +480,14 @@ final class GameCoordinator {
         } catch is CancellationError {
             if screen == .onboarding {
                 refreshState = .recoverableFailure(
-                    message: "The step connection was interrupted. Try again."
+                    message: Self.interruptedConnectionMessage
                 )
             }
             return .cancelled
         } catch {
             publishEconomy()
             refreshState = .recoverableFailure(
-                message: "Apple Health did not provide a readable step total. Try the native Health request again or review access in Settings."
+                message: "AFK Relay couldn’t read a step total. Try again, or review AFK Relay’s access in Settings."
             )
             return .recoverableFailure
         }
@@ -635,7 +635,7 @@ final class GameCoordinator {
             do {
                 try await progressPersistence.flush()
             } catch {
-                self?.progressMessage = "Local run records could not be saved."
+                self?.progressMessage = "Your run history couldn’t be saved to this iPhone."
             }
         }
     }
@@ -665,7 +665,7 @@ final class GameCoordinator {
             screen = .paused
         }
         refreshState = .persistenceBlocked(
-            message: "Movement paused because spending could not be saved. Retry to continue safely."
+            message: "Your movement bank couldn’t be saved, so the run is paused. Try again to keep playing."
         )
     }
 }

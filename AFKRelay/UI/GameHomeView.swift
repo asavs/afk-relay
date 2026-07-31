@@ -24,6 +24,11 @@ struct GameHomeView: View {
                         Text("Real movement. Tactical survival.")
                             .font(.headline)
                             .foregroundStyle(.secondary)
+
+                        Text("Bait enemies into hitting each other — you have no weapon.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
                     }
 
                     WalletBankView(availableTokens: availableTokens)
@@ -51,7 +56,7 @@ struct GameHomeView: View {
                         .accessibilityIdentifier("start-run")
 
                     if availableTokens == 0 {
-                        Label("Walk to add movement before starting.", systemImage: "shoeprints.fill")
+                        Label("Walk to earn movement tokens before you start.", systemImage: "shoeprints.fill")
                             .font(.callout)
                             .foregroundStyle(AFKRelayUIStyle.warning)
                             .multilineTextAlignment(.center)

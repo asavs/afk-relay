@@ -22,15 +22,19 @@ struct RunSummaryView: View {
                             .font(.largeTitle)
                             .bold()
 
-                        Text("Your movement bank is preserved.")
+                        Text("Unspent tokens stay in your movement bank.")
                             .foregroundStyle(.secondary)
                     }
 
                     RunMetricsGrid(model: model)
 
+                    Text("Runs are recorded on this iPhone only.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+
                     DiagnosticPanel {
                         VStack(alignment: .leading, spacing: AFKRelayUIStyle.standardSpacing) {
-                            Label("Personal bests", systemImage: "trophy.fill")
+                            Label("Personal Bests", systemImage: "trophy.fill")
                                 .font(.headline)
 
                             LabeledContent("Survival") {
@@ -47,7 +51,7 @@ struct RunSummaryView: View {
                                 }
                             }
 
-                            LabeledContent("Enemy defeats") {
+                            LabeledContent("Enemies baited") {
                                 HStack(spacing: AFKRelayUIStyle.compactSpacing) {
                                     if model.isNewFriendlyFireBest {
                                         Image(systemName: "sparkles")

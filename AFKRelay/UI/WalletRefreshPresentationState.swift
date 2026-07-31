@@ -15,13 +15,13 @@ enum WalletRefreshPresentationState: Equatable, Sendable {
         case .refreshing:
             "Checking steps…"
         case .current:
-            "Step bank is current"
+            "Movement bank is up to date"
         case .noReadableStepData:
-            "No readable step data"
+            "No step data yet"
         case .recoverableFailure:
             "Couldn’t refresh steps"
         case .persistenceBlocked:
-            "Movement is paused"
+            "Couldn’t save your bank"
         }
     }
 
@@ -47,7 +47,7 @@ enum WalletRefreshPresentationState: Equatable, Sendable {
         case let .recoverableFailure(message), let .persistenceBlocked(message):
             message
         case .noReadableStepData:
-            "AFK Relay could not find a readable step total. Steps access may be off, or Apple Health may not have recorded steps yet."
+            "AFK Relay hasn’t been able to read a step total. Check that AFK Relay can read Steps in Settings, then try again."
         case .idle, .refreshing, .current:
             nil
         }

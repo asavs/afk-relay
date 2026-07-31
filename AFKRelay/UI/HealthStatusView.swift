@@ -9,7 +9,9 @@ struct HealthStatusView: View {
     var body: some View {
         DiagnosticPanel {
             VStack(alignment: .trailing, spacing: AFKRelayUIStyle.compactSpacing) {
-                Label("Health", systemImage: "heart.fill")
+                // "Life", never "Health": this is the game stat, and it must
+                // not read as a display of Apple Health data.
+                Label("Life", systemImage: "shield.lefthalf.filled")
                     .font(.callout)
                     .foregroundStyle(.secondary)
 
@@ -41,7 +43,7 @@ struct HealthStatusView: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Health")
+        .accessibilityLabel("Player life")
         .accessibilityValue("\(current) of \(maximum)")
     }
 

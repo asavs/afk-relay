@@ -21,12 +21,12 @@ struct StepOnboardingView: View {
                             .bold()
                             .multilineTextAlignment(.center)
 
-                        Text("AFK Relay reads your step total from Apple Health. One eligible step adds exactly one movement token.")
+                        Text("Every step you walk becomes one movement token. Spend tokens to survive the arena.")
                             .font(.body)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
 
-                        Text("Connect Steps asks iOS for read-only Steps access. iOS shows its native Health sheet when a choice is still needed.")
+                        Text("Tap Connect Steps to let AFK Relay read your step count. Apple Health will ask for your permission.")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -34,12 +34,12 @@ struct StepOnboardingView: View {
 
                     DiagnosticPanel {
                         VStack(alignment: .leading, spacing: AFKRelayUIStyle.standardSpacing) {
-                            Label("1 step = 1 movement token", systemImage: "equal.circle.fill")
+                            Label("1 step = 1 movement token", systemImage: "arrow.left.arrow.right.circle.fill")
                                 .font(.headline)
 
-                            Label("Your bank stays on this iPhone", systemImage: "iphone.gen3")
+                            Label("Your movement tokens stay on this iPhone", systemImage: "iphone")
 
-                            Label("Only your cumulative step total is used", systemImage: "lock.shield.fill")
+                            Label("AFK Relay reads your step count and nothing else", systemImage: "lock.shield.fill")
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }

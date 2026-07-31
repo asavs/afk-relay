@@ -9,6 +9,7 @@ struct AppShellView: View {
 
     @State private var coordinator: GameCoordinator
     @State private var showsSettings = false
+    @State private var showsResetConfirmation = false
 
     init(composition: AppComposition = .current()) {
         _coordinator = State(
@@ -67,7 +68,7 @@ struct AppShellView: View {
             publishAccessibilityOptions()
         }
         .alert(
-            "Local Records",
+            "Couldn’t Save Run History",
             isPresented: Binding(
                 get: { coordinator.progressMessage != nil },
                 set: { isPresented in
@@ -77,7 +78,7 @@ struct AppShellView: View {
                 }
             )
         ) {
-            Button("OK", role: .cancel) {}
+            Button("OK") {}
         } message: {
             Text(coordinator.progressMessage ?? "")
         }
@@ -125,7 +126,7 @@ struct AppShellView: View {
         ZStack {
             DiagnosticBackdropView()
                 .ignoresSafeArea()
-            ProgressView("Opening local movement bank…")
+            ProgressView("Loading your movement bank…")
                 .controlSize(.large)
                 .foregroundStyle(.white)
         }
@@ -189,23 +190,35 @@ struct AppShellView: View {
                     .bold()
 
                     Text(
-                        "Both local save generations are unreadable. AFK Relay will not mint steps until you explicitly establish a readable zero-credit baseline."
+                        "Your saved movement bank is damaged and can’t be opened. To keep playing, AFK Relay needs to start a new bank at zero tokens."
                     )
 
                     Text(
-                        "Resetting cannot recover the previous local bank. Your Apple Health data is not changed."
+                        "This can’t restore your previous tokens. Your Apple Health data is not changed."
                     )
                     .font(.callout)
                     .foregroundStyle(.secondary)
 
                     Button(
-                        "Reset Local Movement Bank",
-                        systemImage: "arrow.counterclockwise",
+                        "Reset Movement Bank",
+                        systemImage: "trash.fill",
                         role: .destructive,
-                        action: coordinator.resetCorruptEconomy
+                        action: { showsResetConfirmation = true }
                     )
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
+                    .confirmationDialog(
+                        "Reset the movement bank?",
+                        isPresented: $showsResetConfirmation,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Reset Bank", role: .destructive) {
+                            coordinator.resetCorruptEconomy()
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("This starts a new bank at zero tokens and can’t restore the previous one.")
+                    }
                 }
             }
             .padding(AFKRelayUIStyle.screenPadding)

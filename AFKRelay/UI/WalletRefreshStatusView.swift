@@ -15,7 +15,9 @@ struct WalletRefreshStatusView: View {
                 .foregroundStyle(statusStyle)
 
             if case let .current(lastUpdated) = state, let lastUpdated {
-                Text("Updated \(lastUpdated, format: .relative(presentation: .named))")
+                // Clamp to now: an observation instant can never read as the
+                // future, even under a skewed or frozen clock.
+                Text("Updated \(min(lastUpdated, .now), format: .relative(presentation: .named))")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
