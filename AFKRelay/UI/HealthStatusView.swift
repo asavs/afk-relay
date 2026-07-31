@@ -32,9 +32,12 @@ struct HealthStatusView: View {
         .accessibilityValue("\(current) of \(maximum)")
     }
 
+    // Remaining health reads by fill; under Differentiate Without Color the
+    // lost hearts also change glyph shape so the distinction never rests on
+    // the red tint alone.
     private func healthSymbol(at index: Int) -> String {
         if index < current {
-            differentiateWithoutColor ? "heart.fill" : "heart.fill"
+            "heart.fill"
         } else {
             differentiateWithoutColor ? "heart.slash" : "heart"
         }
