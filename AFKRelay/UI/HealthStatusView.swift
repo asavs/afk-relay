@@ -13,13 +13,26 @@ struct HealthStatusView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
 
-                HStack(spacing: 5) {
-                    ForEach(0..<maximum, id: \.self) { index in
-                        Image(systemName: healthSymbol(at: index))
-                            .foregroundStyle(
-                                index < current ? AFKRelayUIStyle.enemy : .secondary
-                            )
+                // One glyph per point only at readable counts; a wide-open
+                // balance must degrade to a bounded gauge instead of laying
+                // out thousands of glyphs (and stretching the arena's Metal
+                // drawable past its maximum size).
+                if maximum <= Self.heartGlyphLimit {
+                    HStack(spacing: 5) {
+                        ForEach(0..<maximum, id: \.self) { index in
+                            Image(systemName: healthSymbol(at: index))
+                                .foregroundStyle(
+                                    index < current ? AFKRelayUIStyle.enemy : .secondary
+                                )
+                        }
                     }
+                } else {
+                    ProgressView(
+                        value: Double(current),
+                        total: Double(max(maximum, 1))
+                    )
+                    .tint(AFKRelayUIStyle.enemy)
+                    .frame(width: 120)
                 }
 
                 Text("\(current) of \(maximum)")
@@ -31,6 +44,8 @@ struct HealthStatusView: View {
         .accessibilityLabel("Health")
         .accessibilityValue("\(current) of \(maximum)")
     }
+
+    private static let heartGlyphLimit = 10
 
     // Remaining health reads by fill; under Differentiate Without Color the
     // lost hearts also change glyph shape so the distinction never rests on
