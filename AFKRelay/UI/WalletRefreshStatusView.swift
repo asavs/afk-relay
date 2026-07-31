@@ -1,18 +1,23 @@
 import SwiftUI
 
 struct WalletRefreshStatusView: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     let state: WalletRefreshPresentationState
 
     var body: some View {
         VStack(alignment: .leading, spacing: AFKRelayUIStyle.compactSpacing) {
-            Label(state.title, systemImage: state.systemImage)
-                .symbolEffect(
-                    .rotate,
-                    isActive: state == .refreshing && !reduceMotion
-                )
-                .foregroundStyle(statusStyle)
+            Label {
+                Text(state.title)
+            } icon: {
+                if state == .refreshing {
+                    // A real indeterminate indicator: correctly announced
+                    // and automatically honors Reduce Motion.
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Image(systemName: state.systemImage)
+                }
+            }
+            .foregroundStyle(statusStyle)
 
             if case let .current(lastUpdated) = state, let lastUpdated {
                 // Clamp to now: an observation instant can never read as the

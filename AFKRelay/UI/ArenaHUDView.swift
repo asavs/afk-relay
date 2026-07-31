@@ -51,13 +51,13 @@ struct ArenaHUDView: View {
                 Label(
                     Duration.seconds(model.survivalDuration)
                         .formatted(.time(pattern: .minuteSecond)),
-                    systemImage: "timer"
+                    systemImage: "stopwatch"
                 )
                 .monospacedDigit()
 
                 Label(
                     "\(model.tokensSpentThisRun) spent",
-                    systemImage: "arrow.up.right"
+                    systemImage: "arrow.down.right"
                 )
                 .font(.callout)
                 .foregroundStyle(.secondary)

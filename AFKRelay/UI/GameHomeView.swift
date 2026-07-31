@@ -71,7 +71,7 @@ struct GameHomeView: View {
         .foregroundStyle(.white)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Settings", systemImage: "gear", action: onShowSettings)
+                Button("Settings", systemImage: "gearshape", action: onShowSettings)
                     .accessibilityIdentifier("home-settings")
             }
         }

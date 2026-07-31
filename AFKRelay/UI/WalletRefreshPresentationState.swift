@@ -38,7 +38,7 @@ enum WalletRefreshPresentationState: Equatable, Sendable {
         case .recoverableFailure:
             "exclamationmark.triangle.fill"
         case .persistenceBlocked:
-            "externaldrive.badge.exclamationmark"
+            "exclamationmark.triangle.fill"
         }
     }
 

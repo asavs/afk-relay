@@ -46,8 +46,13 @@ struct MovementControlTray: View {
     }
 
     private var statusSymbol: String {
-        availableTokens > 0 && isRunActive
-            ? "shoeprints.fill"
-            : "pause.circle.fill"
+        if !isRunActive {
+            // Paused is the only state that may say pause.
+            "pause.circle.fill"
+        } else if availableTokens > 0 {
+            "shoeprints.fill"
+        } else {
+            "figure.walk"
+        }
     }
 }

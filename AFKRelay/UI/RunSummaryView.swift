@@ -12,9 +12,9 @@ struct RunSummaryView: View {
 
             ScrollView {
                 VStack(spacing: AFKRelayUIStyle.generousSpacing) {
-                    Image(systemName: "waveform.path.ecg.rectangle")
+                    Image(systemName: "flag.pattern.checkered")
                         .font(.largeTitle)
-                        .foregroundStyle(AFKRelayUIStyle.enemy)
+                        .foregroundStyle(AFKRelayUIStyle.player)
                         .accessibilityHidden(true)
 
                     VStack(spacing: AFKRelayUIStyle.compactSpacing) {

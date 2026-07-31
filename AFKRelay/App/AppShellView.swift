@@ -184,7 +184,7 @@ struct AppShellView: View {
                 VStack(alignment: .leading, spacing: AFKRelayUIStyle.standardSpacing) {
                     Label(
                         "Movement Bank Needs a Reset",
-                        systemImage: "externaldrive.badge.exclamationmark"
+                        systemImage: "exclamationmark.triangle.fill"
                     )
                     .font(.title2)
                     .bold()

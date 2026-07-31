@@ -19,7 +19,7 @@ struct RunPauseOverlay: View {
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
 
-                    Button("Settings", systemImage: "gear", action: onShowSettings)
+                    Button("Settings", systemImage: "gearshape", action: onShowSettings)
                         .buttonStyle(.bordered)
                 }
             }

@@ -29,11 +29,6 @@ struct VirtualJoystickView: View {
             Circle()
                 .fill(isEnabled ? AFKRelayUIStyle.player : .secondary)
                 .stroke(.white, lineWidth: 3)
-                .overlay {
-                    Image(systemName: "move.3d")
-                        .bold()
-                        .foregroundStyle(.black)
-                }
                 .frame(width: knobDiameter, height: knobDiameter)
                 .offset(knobOffset)
         }

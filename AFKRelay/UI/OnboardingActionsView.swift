@@ -10,7 +10,7 @@ struct OnboardingActionsView: View {
         VStack(spacing: AFKRelayUIStyle.compactSpacing) {
             Button(
                 refreshState == .idle ? "Connect Steps" : "Try Again",
-                systemImage: refreshState == .idle ? "heart.text.square.fill" : "arrow.clockwise",
+                systemImage: refreshState == .idle ? "figure.walk" : "arrow.clockwise",
                 action: primaryAction
             )
             .buttonStyle(.borderedProminent)
@@ -22,7 +22,7 @@ struct OnboardingActionsView: View {
             if showsSettingsAction {
                 Button(
                     "Review Steps Access",
-                    systemImage: "gear",
+                    systemImage: "arrow.up.forward.app",
                     action: onOpenSettings
                 )
                     .buttonStyle(.bordered)

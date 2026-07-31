@@ -36,7 +36,7 @@ struct RunMetricsGrid: View {
             title: "Survived",
             value: Duration.seconds(model.survivalDuration)
                 .formatted(.time(pattern: .minuteSecond)),
-            systemImage: "timer"
+            systemImage: "stopwatch"
         )
     }
 
