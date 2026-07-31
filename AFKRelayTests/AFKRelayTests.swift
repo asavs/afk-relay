@@ -1,28 +1,12 @@
-//
-//  AFKRelayTests.swift
-//  AFKRelayTests
-//
-//  Created by 野嶋伊織 on 7/26/26.
-//
-
 import Testing
 @testable import AFKRelay
 
+@Suite("AFK Relay smoke checks")
 struct AFKRelayTests {
-
-    @Test
-    func arenaLifecycleUsesValidGameplayKitTransitions() {
-        let lifecycle = ArenaLifecycleMachine()
-
-        #expect(lifecycle.phase == .ready)
-
-        lifecycle.start()
-        #expect(lifecycle.phase == .running)
-
-        lifecycle.pause()
-        #expect(lifecycle.phase == .paused)
-
-        lifecycle.resume()
-        #expect(lifecycle.phase == .running)
+    @Test("SpriteKit advances the game at sixty fixed steps per second")
+    @MainActor
+    func fixedStepCadence() {
+        #expect(ArenaScene.fixedStepDuration == 1.0 / 60.0)
+        #expect(ArenaScene.maximumCatchUpSteps > 0)
     }
 }

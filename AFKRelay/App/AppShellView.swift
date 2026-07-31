@@ -3,26 +3,227 @@ import SwiftUI
 
 struct AppShellView: View {
     @Environment(\.scenePhase) private var scenePhase
-    @State private var arenaScene = ArenaScene()
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    @State private var coordinator: GameCoordinator
+    @State private var showsSettings = false
+
+    init(composition: AppComposition = .current()) {
+        _coordinator = State(
+            initialValue: GameCoordinator(composition: composition)
+        )
+    }
 
     var body: some View {
-        SpriteView(
-            scene: arenaScene,
-            options: [.ignoresSiblingOrder],
-            debugOptions: debugOptions
-        )
-        .ignoresSafeArea()
-        .accessibilityIdentifier("arena")
+        @Bindable var coordinator = coordinator
+
+        NavigationStack {
+            content
+        }
+        .preferredColorScheme(.dark)
+        .sheet(isPresented: $showsSettings) {
+            GameSettingsView(
+                diagnostics: $coordinator.diagnosticsOptions,
+                isRunActive: coordinator.screen == .paused
+                    || coordinator.screen == .running,
+                refreshState: coordinator.refreshState,
+                onRefreshSteps: handleRetryOrRefresh,
+                onOpenSystemSettings: coordinator.openSystemSettings,
+                onResume: {
+                    showsSettings = false
+                    coordinator.resumeRun()
+                },
+                onEndRun: {
+                    showsSettings = false
+                    coordinator.endRun()
+                }
+            )
+        }
+        .task {
+            await coordinator.start()
+            publishAccessibilityOptions()
+        }
         .onChange(of: scenePhase) { _, newPhase in
-            arenaScene.setApplicationActive(newPhase == .active)
+            if newPhase == .active {
+                coordinator.applicationDidBecomeActive()
+            } else {
+                coordinator.applicationDidBecomeInactive()
+            }
+        }
+        .onChange(of: differentiateWithoutColor) {
+            publishAccessibilityOptions()
+        }
+        .onChange(of: reduceMotion) {
+            publishAccessibilityOptions()
+        }
+        .onChange(of: colorSchemeContrast) {
+            publishAccessibilityOptions()
+        }
+        .alert(
+            "Local Records",
+            isPresented: Binding(
+                get: { coordinator.progressMessage != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        coordinator.dismissProgressMessage()
+                    }
+                }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(coordinator.progressMessage ?? "")
         }
     }
 
-    private var debugOptions: SpriteView.DebugOptions {
-#if DEBUG
-        [.showsFPS, .showsNodeCount]
-#else
-        []
-#endif
+    @ViewBuilder
+    private var content: some View {
+        switch coordinator.screen {
+        case .loading:
+            loadingView
+        case .onboarding:
+            StepOnboardingView(
+                refreshState: coordinator.refreshState,
+                onConnectSteps: coordinator.connectSteps,
+                onRetry: coordinator.connectSteps,
+                onOpenSettings: coordinator.openSystemSettings
+            )
+        case .home:
+            GameHomeView(
+                availableTokens: coordinator.availableTokens,
+                canStartRun: coordinator.canStartRun,
+                refreshState: coordinator.refreshState,
+                onStartRun: coordinator.startRun,
+                onRefreshSteps: handleRetryOrRefresh,
+                onShowSettings: { showsSettings = true }
+            )
+        case .running, .paused:
+            arenaView
+        case .runSummary:
+            if let runSummary = coordinator.runSummary {
+                RunSummaryView(
+                    model: runSummary,
+                    onRunAgain: coordinator.runAgain,
+                    onReturnHome: coordinator.returnHome
+                )
+            } else {
+                loadingView
+            }
+        case .economyRecovery:
+            economyRecoveryView
+        }
+    }
+
+    private var loadingView: some View {
+        ZStack {
+            DiagnosticBackdropView()
+                .ignoresSafeArea()
+            ProgressView("Opening local movement bank…")
+                .controlSize(.large)
+                .foregroundStyle(.white)
+        }
+        .accessibilityIdentifier("app-loading")
+    }
+
+    private var arenaView: some View {
+        ZStack(alignment: .top) {
+            SpriteView(
+                scene: coordinator.arenaScene,
+                options: [.ignoresSiblingOrder]
+            )
+            .ignoresSafeArea(edges: .horizontal)
+            .accessibilityLabel("Tactical survival arena")
+            .accessibilityIdentifier("arena")
+
+            ArenaHUDView(
+                model: coordinator.hudModel,
+                onPause: coordinator.pauseRun
+            )
+
+            if coordinator.diagnosticsOptions.isEnabled,
+               coordinator.diagnosticsOptions.showsFrameMetrics
+            {
+                DiagnosticsOverlayView(model: coordinator.diagnosticsHUDModel)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    .padding()
+                    .allowsHitTesting(false)
+            }
+
+            if coordinator.screen == .paused {
+                RunPauseOverlay(
+                    onResume: coordinator.resumeRun,
+                    onShowSettings: { showsSettings = true }
+                )
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            MovementControlTray(
+                availableTokens: coordinator.availableTokens,
+                isRunActive: coordinator.screen == .running,
+                onIntentChanged: coordinator.setMovementIntent
+            )
+            .disabled(coordinator.screen != .running)
+        }
+        .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private var economyRecoveryView: some View {
+        ZStack {
+            DiagnosticBackdropView()
+                .ignoresSafeArea()
+
+            DiagnosticPanel {
+                VStack(alignment: .leading, spacing: AFKRelayUIStyle.standardSpacing) {
+                    Label(
+                        "Movement Bank Needs a Reset",
+                        systemImage: "externaldrive.badge.exclamationmark"
+                    )
+                    .font(.title2)
+                    .bold()
+
+                    Text(
+                        "Both local save generations are unreadable. AFK Relay will not mint steps until you explicitly establish a readable zero-credit baseline."
+                    )
+
+                    Text(
+                        "Resetting cannot recover the previous local bank. Your Apple Health data is not changed."
+                    )
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
+                    Button(
+                        "Reset Local Movement Bank",
+                        systemImage: "arrow.counterclockwise",
+                        role: .destructive,
+                        action: coordinator.resetCorruptEconomy
+                    )
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                }
+            }
+            .padding(AFKRelayUIStyle.screenPadding)
+        }
+        .foregroundStyle(.white)
+        .accessibilityIdentifier("economy-recovery")
+    }
+
+    private func handleRetryOrRefresh() {
+        if case .persistenceBlocked = coordinator.refreshState {
+            coordinator.retryPersistenceAndRefresh()
+        } else {
+            coordinator.refreshSteps()
+        }
+    }
+
+    private func publishAccessibilityOptions() {
+        coordinator.updateAccessibility(
+            ArenaAccessibilityOptions(
+                reduceMotion: reduceMotion,
+                differentiateWithoutColor: differentiateWithoutColor,
+                increaseContrast: colorSchemeContrast == .increased
+            )
+        )
     }
 }

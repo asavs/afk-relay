@@ -1,0 +1,662 @@
+import Foundation
+import Observation
+import UIKit
+
+nonisolated enum GameScreen: Equatable, Sendable {
+    case loading
+    case onboarding
+    case home
+    case running
+    case paused
+    case runSummary
+    case economyRecovery
+}
+
+nonisolated enum GameCoordinatorError: Error, Equatable, Sendable {
+    case missingLedger
+}
+
+nonisolated enum StepRefreshOutcome: Equatable, Sendable {
+    case current
+    case noReadableData
+    case recoverableFailure
+    case persistenceBlocked
+    case cancelled
+}
+
+@MainActor
+@Observable
+final class GameCoordinator {
+    private(set) var screen = GameScreen.loading
+    private(set) var availableTokens: Int64 = 0
+    private(set) var playerHealth = MVPBalance.v1.playerHitPoints
+    private(set) var survivalDuration: TimeInterval = 0
+    private(set) var tokensSpentThisRun: Int64 = 0
+    private(set) var friendlyFireDefeatsThisRun = 0
+    private(set) var refreshState = WalletRefreshPresentationState.idle
+    private(set) var runSummary: RunSummaryModel?
+    private(set) var progressMessage: String?
+    var diagnosticsOptions = DiagnosticsOptions.disabled {
+        didSet {
+            arenaScene.diagnosticsOptions = diagnosticsOptions
+        }
+    }
+
+    @ObservationIgnored let arenaScene: ArenaScene
+    @ObservationIgnored private let composition: AppComposition
+    @ObservationIgnored private let progressPersistence:
+        PlayerProgressPersistenceQueue
+    @ObservationIgnored private var economyLedger: EconomyLedger?
+    @ObservationIgnored private var refreshService: StepRefreshService?
+    @ObservationIgnored private var simulation: ArenaSimulation?
+    @ObservationIgnored private var playerProgress = PlayerProgressState()
+    @ObservationIgnored private var movementIntent = Vector2.zero
+    @ObservationIgnored private var runStartingLifetimeSpend: Int64 = 0
+    @ObservationIgnored private var bootstrapStarted = false
+    @ObservationIgnored private var isEstablishingStepConnection = false
+    @ObservationIgnored private var refreshTask: Task<Void, Never>?
+    @ObservationIgnored private var lifecycleFlushTask: Task<Void, Never>?
+    @ObservationIgnored private var backgroundTaskIdentifier = UIBackgroundTaskIdentifier.invalid
+
+    init(composition: AppComposition) {
+        self.composition = composition
+        progressPersistence = PlayerProgressPersistenceQueue(
+            repository: composition.progressRepository
+        )
+        arenaScene = ArenaScene(catalog: composition.presentationCatalog)
+        progressPersistence.setFailureHandler { [weak self] _ in
+            self?.progressMessage = "Local run records could not be saved."
+        }
+        arenaScene.fixedStepHandler = { [weak self] duration in
+            self?.advanceFixedStep(duration: duration)
+        }
+    }
+
+    var hudModel: ArenaHUDModel {
+        ArenaHUDModel(
+            availableTokens: availableTokens,
+            playerHealth: playerHealth,
+            maximumPlayerHealth: MVPBalance.v1.playerHitPoints,
+            survivalDuration: survivalDuration,
+            tokensSpentThisRun: tokensSpentThisRun,
+            refreshState: refreshState
+        )
+    }
+
+    var diagnosticsHUDModel: ArenaDiagnosticsHUDModel {
+        let snapshot = simulation?.snapshot
+        return ArenaDiagnosticsHUDModel(
+            fixedStepHz: 60,
+            renderedFramesPerSecond: arenaScene.renderedFramesPerSecond,
+            simulationTick: UInt64(
+                max(0, ((snapshot?.elapsed ?? 0) * 60).rounded(.down))
+            ),
+            livingEnemies: snapshot?.enemies.count ?? 0,
+            activeAttacks: snapshot?.attacks.filter {
+                $0.isActive()
+            }.count ?? 0
+        )
+    }
+
+    var canStartRun: Bool {
+        availableTokens > 0 && !isPersistenceBlocked
+    }
+
+    nonisolated static func screenAfterSuccessfulPersistenceRetry(
+        currentScreen: GameScreen,
+        hasActiveRun: Bool,
+        hasReadableStepData: Bool
+    ) -> GameScreen {
+        if currentScreen == .onboarding,
+           !hasActiveRun,
+           hasReadableStepData
+        {
+            return .home
+        }
+        return currentScreen
+    }
+
+    func start() async {
+        guard !bootstrapStarted else { return }
+        bootstrapStarted = true
+        await bootstrap()
+    }
+
+    func connectSteps() {
+        refreshTask?.cancel()
+        refreshTask = Task { @MainActor [weak self] in
+            await self?.establishStepConnection()
+        }
+    }
+
+    func refreshSteps(requestAccess: Bool = false) {
+        if !requestAccess,
+           economyLedger?.state.hasReadableStepData != true
+        {
+            connectSteps()
+            return
+        }
+
+        refreshTask?.cancel()
+        refreshTask = Task { @MainActor [weak self] in
+            _ = await self?.performRefresh(requestAccess: requestAccess)
+        }
+    }
+
+    func retryPersistenceAndRefresh() {
+        if screen == .onboarding {
+            connectSteps()
+            return
+        }
+
+        refreshTask?.cancel()
+        refreshTask = Task { @MainActor [weak self] in
+            guard let self, let economyLedger = self.economyLedger else {
+                return
+            }
+
+            do {
+                if economyLedger.persistenceFailure {
+                    try await economyLedger.retryPersistence()
+                }
+                self.publishEconomy()
+                _ = await self.performRefresh(requestAccess: false)
+                if !self.isPersistenceBlocked {
+                    self.screen = Self.screenAfterSuccessfulPersistenceRetry(
+                        currentScreen: self.screen,
+                        hasActiveRun: self.simulation != nil,
+                        hasReadableStepData:
+                            economyLedger.state.hasReadableStepData
+                    )
+                }
+            } catch {
+                self.blockForPersistenceFailure()
+            }
+        }
+    }
+
+    func startRun() {
+        guard canStartRun, let economyLedger else { return }
+        movementIntent = .zero
+        runStartingLifetimeSpend = economyLedger.state.lifetimeTokensSpent
+        tokensSpentThisRun = 0
+        friendlyFireDefeatsThisRun = 0
+        survivalDuration = 0
+        playerHealth = MVPBalance.v1.playerHitPoints
+        simulation = ArenaSimulation(
+            tutorialCompleted: playerProgress.tutorialCompleted
+        )
+        screen = .running
+        arenaScene.setApplicationActive(true)
+
+        if let simulation {
+            arenaScene.publish(
+                ArenaSnapshotPresentationAdapter.makeSnapshot(
+                    from: simulation.snapshot,
+                    renderedFramesPerSecond: arenaScene.renderedFramesPerSecond
+                )
+            )
+        }
+    }
+
+    func setMovementIntent(_ intent: MovementIntent) {
+        let vector = Vector2(x: intent.x, y: intent.y)
+        movementIntent = vector.length > 1 ? vector.normalized : vector
+    }
+
+    func pauseRun() {
+        guard screen == .running else { return }
+        movementIntent = .zero
+        screen = .paused
+        arenaScene.setApplicationActive(false)
+        flushPersistence()
+    }
+
+    func resumeRun() {
+        guard screen == .paused, !isPersistenceBlocked else { return }
+        screen = .running
+        arenaScene.setApplicationActive(true)
+    }
+
+    func endRun() {
+        guard simulation != nil else {
+            screen = .home
+            return
+        }
+        completeRun()
+    }
+
+    func runAgain() {
+        runSummary = nil
+        simulation = nil
+        if availableTokens > 0 {
+            startRun()
+        } else {
+            screen = .home
+        }
+    }
+
+    func returnHome() {
+        movementIntent = .zero
+        simulation = nil
+        runSummary = nil
+        screen = .home
+        arenaScene.setApplicationActive(false)
+    }
+
+    func applicationDidBecomeInactive() {
+        movementIntent = .zero
+        arenaScene.setApplicationActive(false)
+        flushPersistence(protectFromSuspension: true)
+    }
+
+    func applicationDidBecomeActive() {
+        if screen == .running {
+            arenaScene.setApplicationActive(true)
+        }
+        if !isEstablishingStepConnection,
+           economyLedger?.state.hasReadableStepData == true
+        {
+            publishEconomy()
+            refreshSteps(requestAccess: false)
+        }
+    }
+
+    func updateAccessibility(_ options: ArenaAccessibilityOptions) {
+        arenaScene.accessibilityOptions = options
+    }
+
+    func dismissProgressMessage() {
+        progressMessage = nil
+    }
+
+    func openSystemSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else {
+            return
+        }
+        UIApplication.shared.open(url)
+    }
+
+    func resetCorruptEconomy() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let eligibilityStart = StepEligibilityPolicy.firstConnectionBoundary(
+                now: self.composition.now(),
+                calendar: self.composition.calendar
+            )
+            let baseline = EconomyState(eligibilityStart: eligibilityStart)
+            let record = LedgerRecord(generation: 1, state: baseline)
+
+            do {
+                try await self.composition.ledgerRepository
+                    .resetCorruptState(to: record)
+                let ledger = EconomyLedger(
+                    state: baseline,
+                    generation: 1,
+                    repository: self.composition.ledgerRepository
+                )
+                self.economyLedger = ledger
+                self.configureRefreshService(using: ledger)
+                self.publishEconomy()
+                self.screen = .onboarding
+                self.refreshState = .idle
+            } catch {
+                self.refreshState = .persistenceBlocked(
+                    message: "The reset could not be saved. No new steps were credited."
+                )
+            }
+        }
+    }
+
+    private var isPersistenceBlocked: Bool {
+        if case .persistenceBlocked = refreshState {
+            return true
+        }
+        return economyLedger?.persistenceFailure == true
+    }
+
+    private func bootstrap() async {
+        do {
+            do {
+                playerProgress = try await composition.progressRepository.load()
+            } catch {
+                playerProgress = PlayerProgressState()
+                progressMessage = "Local run records could not be read. Gameplay remains available."
+            }
+
+            guard let record = try await composition.ledgerRepository.load() else {
+                screen = .onboarding
+                refreshState = .idle
+                return
+            }
+
+            let ledger = EconomyLedger(
+                state: record.state,
+                generation: record.generation,
+                repository: composition.ledgerRepository
+            )
+            economyLedger = ledger
+            configureRefreshService(using: ledger)
+            publishEconomy()
+            if ledger.state.hasReadableStepData {
+                screen = .home
+                refreshSteps(requestAccess: false)
+            } else {
+                screen = .onboarding
+                refreshState = .idle
+            }
+        } catch LedgerPersistenceError.corruptUnrecoverable {
+            screen = .economyRecovery
+            refreshState = .persistenceBlocked(
+                message: "Both saved movement-bank generations are unreadable."
+            )
+        } catch {
+            screen = .economyRecovery
+            refreshState = .persistenceBlocked(
+                message: "The saved movement bank could not be opened."
+            )
+        }
+    }
+
+    private func configureRefreshService(using ledger: EconomyLedger) {
+        refreshService = StepRefreshService(
+            reader: composition.stepReader,
+            intervalProvider: { [weak self, weak ledger] in
+                guard let self, let ledger else {
+                    throw GameCoordinatorError.missingLedger
+                }
+                let start = ledger.state.eligibilityStart
+                let end = max(start, self.composition.now())
+                return DateInterval(start: start, end: end)
+            },
+            submit: { [weak ledger] total in
+                guard let ledger else {
+                    throw GameCoordinatorError.missingLedger
+                }
+                return try await ledger.reconcile(total)
+            }
+        )
+    }
+
+    func establishStepConnection() async {
+        guard !isEstablishingStepConnection else { return }
+        isEstablishingStepConnection = true
+        defer { isEstablishingStepConnection = false }
+
+        refreshState = .refreshing
+        let ledger: EconomyLedger
+        let createdLedgerForAttempt: Bool
+        if let economyLedger {
+            ledger = economyLedger
+            createdLedgerForAttempt = false
+        } else {
+            do {
+                try await composition.stepReader.requestAccess()
+            } catch is CancellationError {
+                refreshState = .recoverableFailure(
+                    message: "The step connection was interrupted. Try again."
+                )
+                return
+            } catch {
+                refreshState = .recoverableFailure(
+                    message: "Apple Health could not complete the Steps request. Try again or review access in Settings."
+                )
+                return
+            }
+
+            let eligibilityStart = StepEligibilityPolicy.firstConnectionBoundary(
+                now: composition.now(),
+                calendar: composition.calendar
+            )
+            ledger = EconomyLedger(
+                state: EconomyState(eligibilityStart: eligibilityStart),
+                repository: composition.ledgerRepository
+            )
+            economyLedger = ledger
+            configureRefreshService(using: ledger)
+            publishEconomy()
+            createdLedgerForAttempt = true
+        }
+
+        if ledger.persistenceFailure {
+            do {
+                try await ledger.retryPersistence()
+            } catch {
+                refreshState = .persistenceBlocked(
+                    message: "The movement bank could not be saved. Retry before playing."
+                )
+                return
+            }
+        }
+
+        let outcome = await performRefresh(
+            requestAccess: !createdLedgerForAttempt
+        )
+        if outcome == .current, ledger.state.hasReadableStepData {
+            screen = .home
+        } else if createdLedgerForAttempt, !ledger.persistenceFailure {
+            // A genuine first connection is the first validated aggregate, not
+            // merely a button tap. An unreadable/interrupted attempt must not
+            // freeze an earlier day's eligibility boundary.
+            economyLedger = nil
+            refreshService = nil
+            publishEconomy()
+        }
+    }
+
+    private func performRefresh(
+        requestAccess: Bool
+    ) async -> StepRefreshOutcome {
+        guard let refreshService else {
+            refreshState = .recoverableFailure(
+                message: "The local step connection is unavailable. Try again."
+            )
+            return .recoverableFailure
+        }
+        refreshState = .refreshing
+
+        do {
+            let result = try await refreshService.refresh(
+                requestAccess: requestAccess
+            )
+            publishEconomy()
+            refreshState = .current(lastUpdated: result.observedAt)
+            return .current
+        } catch HealthKitStepReaderError.noReadableStepData {
+            publishEconomy()
+            refreshState = .noReadableStepData
+            return .noReadableData
+        } catch EconomyLedgerError.persistenceFailed {
+            blockForPersistenceFailure()
+            return .persistenceBlocked
+        } catch is CancellationError {
+            if screen == .onboarding {
+                refreshState = .recoverableFailure(
+                    message: "The step connection was interrupted. Try again."
+                )
+            }
+            return .cancelled
+        } catch {
+            publishEconomy()
+            refreshState = .recoverableFailure(
+                message: "Apple Health did not provide a readable step total. Try the native Health request again or review access in Settings."
+            )
+            return .recoverableFailure
+        }
+    }
+
+    private func advanceFixedStep(duration: TimeInterval) -> ArenaRenderSnapshot? {
+        guard
+            screen == .running,
+            let economyLedger,
+            !economyLedger.persistenceFailure,
+            var simulation
+        else {
+            if economyLedger?.persistenceFailure == true {
+                blockForPersistenceFailure()
+            }
+            return nil
+        }
+
+        let normalizedIntent = movementIntent.length > 1
+            ? movementIntent.normalized
+            : movementIntent
+        let desiredDistance = MVPBalance.v1.playerSpeed
+            * duration
+            * normalizedIntent.length
+        let reservation = MovementCostPolicy.reserve(
+            distance: desiredDistance,
+            state: economyLedger.state
+        )
+        let inputScale = desiredDistance > 0
+            ? reservation.affordableDistance / desiredDistance
+            : 0
+        let affordableIntent = normalizedIntent * inputScale
+        let previousPosition = simulation.player.position
+        let intendedPosition = previousPosition
+            + affordableIntent * MVPBalance.v1.playerSpeed * duration
+        let previousSpend = economyLedger.state.lifetimeTokensSpent
+        let events = simulation.step(
+            input: affordableIntent,
+            duration: duration
+        )
+        _ = economyLedger.commitMovement(
+            distance: simulation.lastPlayerTravelDistance
+        )
+        let spendDelta = economyLedger.state.lifetimeTokensSpent - previousSpend
+        simulation.recordMovementTokensSpent(spendDelta)
+        self.simulation = simulation
+
+        availableTokens = economyLedger.state.availableTokens
+        playerHealth = simulation.player.hitPoints
+        survivalDuration = simulation.elapsed
+        tokensSpentThisRun = economyLedger.state.lifetimeTokensSpent
+            - runStartingLifetimeSpend
+        process(events)
+
+        let rendered = ArenaSnapshotPresentationAdapter.makeSnapshot(
+            from: simulation.snapshot,
+            events: events,
+            previousPlayerPosition: previousPosition,
+            intendedPlayerPosition: intendedPosition,
+            renderedFramesPerSecond: arenaScene.renderedFramesPerSecond
+        )
+
+        if economyLedger.persistenceFailure {
+            blockForPersistenceFailure()
+        } else if events.contains(.playerDefeated) {
+            completeRun()
+        }
+
+        return rendered
+    }
+
+    private func process(_ events: [GameEvent]) {
+        for event in events {
+            switch event {
+            case .tutorialCompleted:
+                guard !playerProgress.tutorialCompleted else { continue }
+                playerProgress.markTutorialCompleted()
+                persistProgress(playerProgress)
+            case .enemyDefeated:
+                friendlyFireDefeatsThisRun += 1
+            case .spawned, .damaged, .playerDefeated, .tutorialAdvanced:
+                break
+            }
+        }
+    }
+
+    private func completeRun() {
+        guard let simulation, let economyLedger else { return }
+        movementIntent = .zero
+        arenaScene.setApplicationActive(false)
+
+        let record = LocalRunRecord(
+            survivalDuration: simulation.elapsed,
+            friendlyFireDefeats: friendlyFireDefeatsThisRun,
+            tokensSpent: economyLedger.state.lifetimeTokensSpent
+                - runStartingLifetimeSpend,
+            endedAt: composition.now()
+        )
+        let update = playerProgress.record(record)
+        playerProgress = update.state
+        runSummary = RunSummaryModel(
+            survivalDuration: record.survivalDuration,
+            friendlyFireDefeats: record.friendlyFireDefeats,
+            tokensSpent: record.tokensSpent,
+            bestSurvivalDuration: playerProgress.bestSurvivalDuration,
+            bestFriendlyFireDefeats: playerProgress.bestFriendlyFireDefeats,
+            isNewSurvivalBest: update.isNewSurvivalBest,
+            isNewFriendlyFireBest: update.isNewFriendlyFireBest
+        )
+        screen = .runSummary
+        persistProgress(playerProgress)
+        flushPersistence()
+    }
+
+    private func persistProgress(_ state: PlayerProgressState) {
+        progressPersistence.enqueue(state)
+    }
+
+    private func publishEconomy() {
+        availableTokens = economyLedger?.state.availableTokens ?? 0
+    }
+
+    private func flushPersistence(protectFromSuspension: Bool = false) {
+        let economyLedger = economyLedger
+        let progressPersistence = progressPersistence
+        if protectFromSuspension {
+            beginBackgroundPersistenceTask()
+        }
+        lifecycleFlushTask = Task { @MainActor [weak self] in
+            defer {
+                if protectFromSuspension {
+                    self?.endBackgroundPersistenceTask()
+                }
+            }
+            if let economyLedger {
+                do {
+                    try await economyLedger.flush()
+                    self?.publishEconomy()
+                } catch {
+                    self?.blockForPersistenceFailure()
+                }
+            }
+
+            do {
+                try await progressPersistence.flush()
+            } catch {
+                self?.progressMessage = "Local run records could not be saved."
+            }
+        }
+    }
+
+    private func beginBackgroundPersistenceTask() {
+        guard backgroundTaskIdentifier == .invalid else { return }
+        backgroundTaskIdentifier = UIApplication.shared.beginBackgroundTask(
+            withName: "AFKRelay local persistence checkpoint"
+        ) { [weak self] in
+            Task { @MainActor in
+                self?.blockForPersistenceFailure()
+                self?.endBackgroundPersistenceTask()
+            }
+        }
+    }
+
+    private func endBackgroundPersistenceTask() {
+        guard backgroundTaskIdentifier != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundTaskIdentifier)
+        backgroundTaskIdentifier = .invalid
+    }
+
+    private func blockForPersistenceFailure() {
+        movementIntent = .zero
+        arenaScene.setApplicationActive(false)
+        if screen == .running {
+            screen = .paused
+        }
+        refreshState = .persistenceBlocked(
+            message: "Movement paused because spending could not be saved. Retry to continue safely."
+        )
+    }
+}

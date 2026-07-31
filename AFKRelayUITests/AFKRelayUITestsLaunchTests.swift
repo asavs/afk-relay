@@ -7,7 +7,7 @@
 
 import XCTest
 
-final class AFKRelayUITestsLaunchTests: XCTestCase {
+nonisolated final class AFKRelayUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true
@@ -17,18 +17,22 @@ final class AFKRelayUITestsLaunchTests: XCTestCase {
         continueAfterFailure = false
     }
 
+    // Launch coverage only: reach the first interactive surface and record a
+    // screenshot for each appearance. The full gameplay walkthrough lives in
+    // `AFKRelayUITests` and is not repeated here.
     @MainActor
     func testLaunch() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing"]
         app.launch()
 
-        // Insert steps here to perform after app launch but before taking a screenshot,
-        // such as logging into a test account or navigating somewhere in the app
-        // XCUIAutomation Documentation
-        // https://developer.apple.com/documentation/xcuiautomation
+        XCTAssertTrue(
+            app.otherElements["step-onboarding"]
+                .waitForExistence(timeout: 20)
+        )
 
         let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "Launch Screen"
+        attachment.name = "Launch Onboarding"
         attachment.lifetime = .keepAlways
         add(attachment)
     }

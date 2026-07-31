@@ -1,75 +1,116 @@
 import SpriteKit
 
+/// SpriteKit owns render cadence only. The fixed-step handler advances the
+/// framework-free simulation and returns an immutable presentation snapshot.
+@MainActor
 final class ArenaScene: SKScene {
-    private let lifecycle = ArenaLifecycleMachine()
-    private let worldNode = SKNode()
-    private let arenaBorder = SKShapeNode()
-    private let playerNode = SKSpriteNode(
-        color: SKColor(red: 0.23, green: 0.95, blue: 1.0, alpha: 1),
-        size: CGSize(width: 30, height: 30)
-    )
+    typealias FixedStepHandler = @MainActor (TimeInterval) -> ArenaRenderSnapshot?
 
-    override init() {
+    static let fixedStepDuration: TimeInterval = 1.0 / 60.0
+    static let maximumCatchUpSteps = 15
+
+    var fixedStepHandler: FixedStepHandler?
+    var diagnosticsOptions = DiagnosticsOptions.disabled
+    var accessibilityOptions = ArenaAccessibilityOptions.standard
+    private(set) var renderedFramesPerSecond = 0
+
+    private let renderer: ArenaRenderer
+    private var latestSnapshot: ArenaRenderSnapshot?
+    private var previousRenderTime: TimeInterval?
+    private var accumulatedTime: TimeInterval = 0
+    private var frameMeasurementDuration: TimeInterval = 0
+    private var measuredFrameCount = 0
+    private var applicationIsActive = true
+
+    init(catalog: any ArenaPresentationCatalog = DiagnosticCatalog()) {
+        renderer = ArenaRenderer(catalog: catalog)
         super.init(size: CGSize(width: 390, height: 844))
         scaleMode = .resizeFill
-        backgroundColor = SKColor(red: 0.02, green: 0.03, blue: 0.08, alpha: 1)
+        anchorPoint = .zero
     }
 
     required init?(coder aDecoder: NSCoder) {
+        renderer = ArenaRenderer()
         super.init(coder: aDecoder)
+        scaleMode = .resizeFill
+        anchorPoint = .zero
     }
 
     override func didMove(to view: SKView) {
-        guard worldNode.parent == nil else { return }
-
-        addChild(worldNode)
-
-        arenaBorder.strokeColor = SKColor(red: 0.18, green: 0.55, blue: 0.68, alpha: 1)
-        arenaBorder.lineWidth = 2
-        arenaBorder.glowWidth = 1
-        arenaBorder.zPosition = -1
-        worldNode.addChild(arenaBorder)
-
-        playerNode.name = "player"
-        playerNode.zPosition = 1
-        worldNode.addChild(playerNode)
-
-        let title = SKLabelNode(text: "EXP IRL")
-        title.name = "scaffoldTitle"
-        title.fontName = "AvenirNext-Bold"
-        title.fontSize = 24
-        title.fontColor = SKColor(red: 0.23, green: 0.95, blue: 1.0, alpha: 1)
-        title.verticalAlignmentMode = .center
-        worldNode.addChild(title)
-
-        layoutArena()
-        lifecycle.start()
+        renderer.attach(to: self)
+        renderer.setViewportSize(size)
+        view.preferredFramesPerSecond = 60
+        view.shouldCullNonVisibleNodes = true
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
         super.didChangeSize(oldSize)
-        layoutArena()
+        renderer.setViewportSize(size)
+    }
+
+    override func update(_ currentTime: TimeInterval) {
+        guard applicationIsActive else {
+            previousRenderTime = nil
+            return
+        }
+
+        guard let previousRenderTime else {
+            self.previousRenderTime = currentTime
+            renderLatestSnapshot()
+            return
+        }
+
+        let renderDelta = min(max(currentTime - previousRenderTime, 0), 0.25)
+        self.previousRenderTime = currentTime
+        accumulatedTime += renderDelta
+        frameMeasurementDuration += renderDelta
+        measuredFrameCount += 1
+        if frameMeasurementDuration >= 0.5 {
+            renderedFramesPerSecond = Int(
+                (Double(measuredFrameCount) / frameMeasurementDuration).rounded()
+            )
+            frameMeasurementDuration = 0
+            measuredFrameCount = 0
+        }
+
+        var advancedSteps = 0
+        while accumulatedTime >= Self.fixedStepDuration,
+              advancedSteps < Self.maximumCatchUpSteps
+        {
+            if let snapshot = fixedStepHandler?(Self.fixedStepDuration) {
+                latestSnapshot = snapshot
+            }
+            accumulatedTime -= Self.fixedStepDuration
+            advancedSteps += 1
+        }
+
+        if advancedSteps == Self.maximumCatchUpSteps {
+            accumulatedTime = min(accumulatedTime, Self.fixedStepDuration)
+        }
+
+        renderLatestSnapshot()
+    }
+
+    func publish(_ snapshot: ArenaRenderSnapshot) {
+        latestSnapshot = snapshot
+        renderLatestSnapshot()
     }
 
     func setApplicationActive(_ isActive: Bool) {
-        if isActive {
-            lifecycle.resume()
-            isPaused = false
-        } else {
-            lifecycle.pause()
-            isPaused = true
-        }
+        applicationIsActive = isActive
+        previousRenderTime = nil
+        accumulatedTime = 0
+        frameMeasurementDuration = 0
+        measuredFrameCount = 0
+        isPaused = !isActive
     }
 
-    private func layoutArena() {
-        let inset: CGFloat = 28
-        let arenaFrame = frame.insetBy(dx: inset, dy: inset)
-        arenaBorder.path = CGPath(rect: arenaFrame, transform: nil)
-        playerNode.position = CGPoint(x: frame.midX, y: frame.midY)
-
-        childNode(withName: "//scaffoldTitle")?.position = CGPoint(
-            x: frame.midX,
-            y: frame.maxY - 64
+    private func renderLatestSnapshot() {
+        guard let latestSnapshot else { return }
+        renderer.render(
+            latestSnapshot,
+            diagnostics: diagnosticsOptions,
+            accessibility: accessibilityOptions
         )
     }
 }

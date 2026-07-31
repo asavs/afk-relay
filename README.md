@@ -13,39 +13,49 @@ movement. Every eligible HealthKit step mints one movement token. In the arena,
 the player has no attack: survival depends on positioning enemies so their
 telegraphed attacks hit one another.
 
-> **Status:** Initial application scaffold. The shell, arena placeholder,
-> lifecycle state machine, and test targets exist; the HealthKit economy and
-> playable combat loop have not been implemented yet.
+> **Status:** Gameplay-proof MVP implemented for signed-device and TestFlight
+> validation. The remaining gates are physical-device HealthKit checks,
+> oldest-device performance profiling, moderated playtesting, signing, and
+> App Store Connect distribution.
 
 ## MVP
 
-- Native iOS app built with SwiftUI, SpriteKit, GameplayKit, and HealthKit.
+- Native iPhone app built with SwiftUI, SpriteKit, and HealthKit.
 - One credited real-world step creates exactly one movement token.
-- Player-commanded movement is the only use of movement tokens.
+- Continuous joystick movement is the only use of movement tokens.
 - The player has no attack, building action, spell, or defense.
-- Enemy attacks use friendly fire and never damage their source.
+- Analytic enemy sweeps use universal friendly fire and never damage their source.
 - State remains on device; the MVP has no account or custom backend.
-- Primitive sci-fi geometry is intentional.
+- Diagnostic primitive graphics and the optional inspection overlay are intentional.
 
-## Current scaffold
+## Implemented gameplay proof
 
-- `AppShellView` embeds the SpriteKit arena in SwiftUI.
-- `ArenaScene` renders a primitive arena and centered player placeholder.
-- `ArenaLifecycleMachine` uses `GKStateMachine` for ready, running, and paused
-  transitions.
-- Swift Testing covers deterministic lifecycle behavior.
-- XCTest provides the UI-test target.
+- HealthKit cumulative-step aggregation from a fixed first-connection boundary.
+- Atomic current/previous economy generations with exact-once high-water credit.
+- Immediate in-memory movement spending, fractional carry, scheduled checkpoints,
+  lifecycle flush, and fail-closed retry.
+- A framework-free deterministic `1/60s` arena with swept-circle sliding,
+  solid kinematic bodies, telegraph/active/recovery sweeps, source immunity,
+  multi-target friendly fire, endless spawning, death, and run records.
+- Deterministic discovery staging: evade one attack, observe enemy damage, then
+  enter endless pressure.
+- SwiftUI onboarding, wallet, HUD, joystick, pause/settings, recovery, and run
+  summary surfaces.
+- SpriteKit diagnostic primitives, exact attack geometry, non-color cues,
+  friendly-fire impacts, and a toggleable inspection overlay.
+- Swift Testing coverage for economy, persistence, geometry, simulation,
+  refresh coalescing, architecture boundaries, and catalog substitution;
+  XCTest covers the deterministic end-to-end UI flow.
 
 ## Requirements
 
-- macOS with Xcode 26.6 or a compatible newer release.
-- An iOS simulator for scaffold development.
+- macOS with an iOS 26-capable Xcode release.
+- An iOS simulator for deterministic development and UI automation.
 - A signed physical iPhone and Apple Developer configuration for HealthKit
   integration and device acceptance checks.
 
-The scaffold currently uses an iOS 26.5 deployment target as a provisional
-project setting. The supported OS, device, and orientation matrix remains an
-explicit product decision.
+The app target is iOS 26+, iPhone-only, and portrait-only. All targets use
+Swift 6 with complete concurrency checking and Main Actor default isolation.
 
 ## Open and run
 
@@ -54,15 +64,16 @@ explicit product decision.
 3. Choose an iPhone simulator.
 4. Run with **Product → Run** (`⌘R`).
 
-Run the test suite with **Product → Test** (`⌘U`). A command-line scaffold build
-can also be started from this repository root:
+Run the test suite with **Product → Test** (`⌘U`). Command-line verification:
 
 ```sh
+./scripts/check-architecture.sh
+
 xcodebuild \
   -project AFKRelay.xcodeproj \
   -scheme AFKRelay \
-  -destination 'generic/platform=iOS Simulator' \
-  build
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  test
 ```
 
 HealthKit behavior must ultimately be verified on signed physical hardware; the
@@ -72,14 +83,20 @@ domain economy will use a fake health provider in deterministic tests.
 
 ```text
 AFKRelay/
-  App/                 SwiftUI entry point and application shell
-  Game/                SpriteKit and GameplayKit integration
+  App/                 Composition root, coordinator, and application shell
+  Domain/              Economy, geometry, and deterministic simulation
+  Game/                Fixed-step SpriteKit presentation bridge
+  Health/              Narrow HealthKit aggregate adapter and refresh service
+  Persistence/         Atomic ledger and independent player progress
+  Presentation/        Catalog roles, immutable render DTOs, and renderer
+  UI/                  SwiftUI onboarding, HUD, controls, settings, and results
   AppIcon.icon/        Layered, appearance-aware production app icon
   Assets.xcassets/     Accent color and additional visual assets
 AFKRelayTests/          Swift Testing unit and integration tests
 AFKRelayUITests/        XCTest UI tests
 AFKRelay.xcodeproj/     Xcode project
-Brand/                  Visual identity sources and generated-art provenance
+Brand/                  Theme-neutral icon sources and art provenance
+scripts/                Static architecture verification
 ```
 
 ## Documentation
