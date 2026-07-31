@@ -85,15 +85,17 @@ final class GameCoordinator {
 
     var diagnosticsHUDModel: ArenaDiagnosticsHUDModel {
         let snapshot = simulation?.snapshot
+        let balance = simulation?.balance ?? .v1
+        let fixedStepHz = 1 / ArenaSimulation.fixedTimeStep
         return ArenaDiagnosticsHUDModel(
-            fixedStepHz: 60,
+            fixedStepHz: Int(fixedStepHz.rounded()),
             renderedFramesPerSecond: arenaScene.renderedFramesPerSecond,
             simulationTick: UInt64(
-                max(0, ((snapshot?.elapsed ?? 0) * 60).rounded(.down))
+                max(0, ((snapshot?.elapsed ?? 0) * fixedStepHz).rounded(.down))
             ),
             livingEnemies: snapshot?.enemies.count ?? 0,
             activeAttacks: snapshot?.attacks.filter {
-                $0.isActive()
+                $0.isActive(balance: balance)
             }.count ?? 0
         )
     }
@@ -193,6 +195,7 @@ final class GameCoordinator {
             arenaScene.publish(
                 ArenaSnapshotPresentationAdapter.makeSnapshot(
                     from: simulation.snapshot,
+                    balance: simulation.balance,
                     renderedFramesPerSecond: arenaScene.renderedFramesPerSecond
                 )
             )
@@ -501,7 +504,7 @@ final class GameCoordinator {
         let normalizedIntent = movementIntent.length > 1
             ? movementIntent.normalized
             : movementIntent
-        let desiredDistance = MVPBalance.v1.playerSpeed
+        let desiredDistance = simulation.balance.playerSpeed
             * duration
             * normalizedIntent.length
         let reservation = MovementCostPolicy.reserve(
@@ -514,7 +517,7 @@ final class GameCoordinator {
         let affordableIntent = normalizedIntent * inputScale
         let previousPosition = simulation.player.position
         let intendedPosition = previousPosition
-            + affordableIntent * MVPBalance.v1.playerSpeed * duration
+            + affordableIntent * simulation.balance.playerSpeed * duration
         let previousSpend = economyLedger.state.lifetimeTokensSpent
         let events = simulation.step(
             input: affordableIntent,
@@ -539,6 +542,7 @@ final class GameCoordinator {
             events: events,
             previousPlayerPosition: previousPosition,
             intendedPlayerPosition: intendedPosition,
+            balance: simulation.balance,
             renderedFramesPerSecond: arenaScene.renderedFramesPerSecond
         )
 

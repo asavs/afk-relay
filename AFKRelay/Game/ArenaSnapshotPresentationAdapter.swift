@@ -14,7 +14,7 @@ enum ArenaSnapshotPresentationAdapter {
         renderedFramesPerSecond: Int = 60
     ) -> ArenaRenderSnapshot {
         let allEntities = [snapshot.player] + snapshot.enemies
-        let entities = allEntities.map(makeEntity)
+        let entities = allEntities.map { makeEntity($0, balance: balance) }
         let attacks = snapshot.attacks.compactMap { attack in
             makeAttack(
                 attack,
@@ -45,7 +45,7 @@ enum ArenaSnapshotPresentationAdapter {
             impacts: impacts,
             debugVectors: vectors,
             diagnostics: ArenaDiagnosticsMetrics(
-                fixedStepHz: 60,
+                fixedStepHz: Int((1 / ArenaSimulation.fixedTimeStep).rounded()),
                 renderedFramesPerSecond: renderedFramesPerSecond,
                 livingEnemyCount: snapshot.enemies.count,
                 activeAttackCount: snapshot.attacks.filter {
@@ -56,10 +56,13 @@ enum ArenaSnapshotPresentationAdapter {
         )
     }
 
-    private static func makeEntity(_ entity: ArenaEntity) -> ArenaRenderEntity {
+    private static func makeEntity(
+        _ entity: ArenaEntity,
+        balance: MVPBalance
+    ) -> ArenaRenderEntity {
         let maximumHitPoints = entity.isPlayer
-            ? MVPBalance.v1.playerHitPoints
-            : MVPBalance.v1.enemyHitPoints
+            ? balance.playerHitPoints
+            : balance.enemyHitPoints
         // Renderer silhouettes point along +Y in texture space.
         let facingAngle = atan2(entity.facing.y, entity.facing.x) - .pi / 2
 
