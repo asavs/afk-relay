@@ -182,6 +182,46 @@ struct EconomyLedgerIntegrationTests {
         #expect(records.last?.state.movementRemainder == 2)
     }
 
+    @Test("A refresh piling onto a failed save reports persistence failure")
+    func pileUpOnFailedSaveReportsPersistenceFailure() async {
+        let repository = ControlledSaveLedgerRepository(
+            blockNextSave: true,
+            saveFails: true
+        )
+        let ledger = EconomyLedger(
+            state: EconomyState(eligibilityStart: .distantPast),
+            repository: repository,
+            scheduleCheckpoint: { _, _ in }
+        )
+        let interval = DateInterval(start: .distantPast, duration: 1)
+        let total = StepTotal(
+            count: 50,
+            interval: interval,
+            observedAt: interval.end
+        )
+
+        let first = Task { @MainActor in
+            try await ledger.reconcile(total)
+        }
+        await repository.waitUntilSaveStarts()
+        let second = Task { @MainActor in
+            try await ledger.reconcile(total)
+        }
+        await Task.yield()
+        await repository.releaseBlockedSave()
+
+        for refresh in [first, second] {
+            do {
+                _ = try await refresh.value
+                Issue.record("A refresh over a failed save must throw")
+            } catch {
+                #expect(error as? EconomyLedgerError == .persistenceFailed)
+            }
+        }
+        #expect(ledger.persistenceFailure)
+        #expect(ledger.state.availableTokens == 0)
+    }
+
     @Test("Malformed step totals fail closed")
     func malformedAggregate() async {
         let repository = InMemoryLedgerRepository()

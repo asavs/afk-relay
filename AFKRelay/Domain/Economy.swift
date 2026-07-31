@@ -244,7 +244,15 @@ nonisolated enum EconomyLedgerError: Error, Equatable, Sendable { case invalidAg
 
     func reconcile(_ total: StepTotal) async throws -> Int64 {
         while let pendingReconciliation {
-            try await pendingReconciliation.task.value
+            do {
+                try await pendingReconciliation.task.value
+            } catch {
+                // Translate the repository error so callers piling onto a
+                // failed save observe the same fail-closed persistence
+                // signal as the reconciliation that started it.
+                recordPersistenceFailure()
+                throw EconomyLedgerError.persistenceFailed
+            }
             await Task.yield()
         }
 
@@ -369,8 +377,11 @@ nonisolated enum EconomyLedgerError: Error, Equatable, Sendable { case invalidAg
     }
 
     func retryPersistence() async throws {
+        // Read before suspending: a spend that lands during the save is not
+        // in the saved snapshot and must stay dirty for the next checkpoint.
+        let revisionBeingSaved = spendRevision
         try await save()
-        persistedSpendRevision = spendRevision
+        persistedSpendRevision = max(persistedSpendRevision, revisionBeingSaved)
     }
 
     func resetCorruptState(eligibilityStart: Date) async throws {
