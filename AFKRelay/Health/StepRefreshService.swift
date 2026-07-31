@@ -17,6 +17,7 @@ final class StepRefreshService {
     private let intervalProvider: IntervalProvider
     private let submit: Submission
     private var inFlight: Task<StepRefreshResult, any Error>?
+    private var inFlightRequestsAccess = false
 
     init(
         reader: any StepTotalReading,
@@ -29,8 +30,15 @@ final class StepRefreshService {
     }
 
     func refresh(requestAccess: Bool = false) async throws -> StepRefreshResult {
-        if let inFlight {
-            return try await inFlight.value
+        while let existing = inFlight {
+            if !requestAccess || inFlightRequestsAccess {
+                return try await existing.value
+            }
+            // An access-requesting refresh must not silently join a refresh
+            // that never asked. Let the in-flight read finish either way,
+            // then run a pass that performs the native request.
+            _ = try? await existing.value
+            await Task.yield()
         }
 
         let task = Task { @MainActor [reader, intervalProvider, submit] in
@@ -48,6 +56,7 @@ final class StepRefreshService {
         }
 
         inFlight = task
+        inFlightRequestsAccess = requestAccess
         defer { inFlight = nil }
         return try await task.value
     }

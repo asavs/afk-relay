@@ -43,6 +43,46 @@ struct StepRefreshServiceTests {
         #expect(recorder.submissionCount == 1)
     }
 
+    @Test("An access-requesting refresh does not join a non-requesting one")
+    func accessRequestSurvivesCoalescing() async throws {
+        let interval = DateInterval(
+            start: Date(timeIntervalSince1970: 1_000),
+            end: Date(timeIntervalSince1970: 2_000)
+        )
+        let reader = ControlledStepReader()
+        let recorder = SubmissionRecorder()
+        let service = StepRefreshService(
+            reader: reader,
+            intervalProvider: { interval },
+            submit: { total in
+                recorder.submit(total)
+            }
+        )
+        let total = StepTotal(
+            count: 100,
+            interval: interval,
+            observedAt: interval.end
+        )
+
+        let plain = Task { try await service.refresh() }
+        await reader.waitUntilQueryStarted()
+        let requesting = Task { try await service.refresh(requestAccess: true) }
+        await Task.yield()
+
+        await reader.complete(with: total)
+        _ = try await plain.value
+
+        // The access-requesting caller must run its own pass with the
+        // native request instead of adopting the plain result.
+        await reader.waitUntilQueryCount(2)
+        await reader.complete(with: total)
+        _ = try await requesting.value
+
+        #expect(await reader.accessRequestCount == 1)
+        #expect(await reader.queryCount == 2)
+        #expect(recorder.submissionCount == 2)
+    }
+
     @Test("Onboarding refresh requests access before reading")
     func requestsAccessDuringOnboarding() async throws {
         let interval = DateInterval(
@@ -97,20 +137,22 @@ private actor ImmediateStepReader: StepTotalReading {
 }
 
 private actor ControlledStepReader: StepTotalReading {
+    private(set) var accessRequestCount = 0
     private(set) var queryCount = 0
-    private var queryStarted = false
-    private var startWaiters: [CheckedContinuation<Void, Never>] = []
+    private var startWaiters:
+        [(threshold: Int, continuation: CheckedContinuation<Void, Never>)] = []
     private var resultContinuation: CheckedContinuation<StepTotal, any Error>?
 
-    func requestAccess() {}
+    func requestAccess() {
+        accessRequestCount += 1
+    }
 
     func cumulativeSteps(in interval: DateInterval) async throws -> StepTotal {
         queryCount += 1
-        queryStarted = true
-        let waiters = startWaiters
-        startWaiters.removeAll()
-        for waiter in waiters {
-            waiter.resume()
+        let reached = startWaiters.filter { $0.threshold <= queryCount }
+        startWaiters.removeAll { $0.threshold <= queryCount }
+        for waiter in reached {
+            waiter.continuation.resume()
         }
 
         return try await withCheckedThrowingContinuation { continuation in
@@ -119,11 +161,15 @@ private actor ControlledStepReader: StepTotalReading {
     }
 
     func waitUntilQueryStarted() async {
-        if queryStarted {
+        await waitUntilQueryCount(1)
+    }
+
+    func waitUntilQueryCount(_ threshold: Int) async {
+        if queryCount >= threshold {
             return
         }
         await withCheckedContinuation { continuation in
-            startWaiters.append(continuation)
+            startWaiters.append((threshold, continuation))
         }
     }
 
