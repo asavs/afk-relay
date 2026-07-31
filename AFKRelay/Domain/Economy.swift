@@ -384,26 +384,6 @@ nonisolated enum EconomyLedgerError: Error, Equatable, Sendable { case invalidAg
         persistedSpendRevision = max(persistedSpendRevision, revisionBeingSaved)
     }
 
-    func resetCorruptState(eligibilityStart: Date) async throws {
-        let baseline = EconomyState(eligibilityStart: eligibilityStart)
-        let record = LedgerRecord(generation: 1, state: baseline)
-        do {
-            try await repository.resetCorruptState(to: record)
-            state = baseline
-            generation = 1
-            spendRevision = 0
-            persistedSpendRevision = 0
-            checkpointScheduled = false
-            checkpointFlight = nil
-            saveTail = nil
-            pendingReconciliation = nil
-            clearPersistenceFailure()
-        } catch {
-            recordPersistenceFailure()
-            throw EconomyLedgerError.persistenceFailed
-        }
-    }
-
     private func save(_ value: EconomyState? = nil) async throws {
         let task = makeSaveTask(value ?? state)
         do {

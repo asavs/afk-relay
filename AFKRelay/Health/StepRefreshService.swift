@@ -60,9 +60,4 @@ final class StepRefreshService {
         defer { inFlight = nil }
         return try await task.value
     }
-
-    func cancel() {
-        inFlight?.cancel()
-        inFlight = nil
-    }
 }

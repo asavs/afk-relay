@@ -23,15 +23,4 @@ struct DiagnosticsOptions: Equatable, Sendable {
         showsFrameMetrics: false
     )
 
-    static let inspection = DiagnosticsOptions(
-        isEnabled: true,
-        showsEntityIdentifiers: true,
-        showsAttackIdentifiers: true,
-        showsIntentPaths: true,
-        showsResolvedPaths: true,
-        showsCollisionNormals: true,
-        showsPursuitVectors: true,
-        showsPhaseTiming: true,
-        showsFrameMetrics: true
-    )
 }
