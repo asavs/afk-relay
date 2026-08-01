@@ -41,13 +41,20 @@ nonisolated final class AFKRelayUITests: XCTestCase {
         XCTAssertTrue(bank.waitForExistence(timeout: 5))
         XCTAssertEqual(bank.value as? String, "1,000 tokens available")
 
-        // Movement spends from the bank.
+        // Movement spends from the bank. A drag delivers a continuous
+        // event stream; a stationary synthesized press is a single
+        // droppable touch-down.
         tap(app, button: "start-run", toReveal: "arena-hud")
         let joystick = element(app, "movement-joystick")
         XCTAssertTrue(joystick.waitForExistence(timeout: 5))
-        joystick.coordinate(
+        let center = joystick.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)
+        )
+        let edge = joystick.coordinate(
             withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)
-        ).press(forDuration: 2.0)
+        )
+        center.press(forDuration: 0.3, thenDragTo: edge)
+        center.press(forDuration: 0.3, thenDragTo: edge)
 
         // Pause blocks the arena and resume returns to it.
         tap(app, button: "pause-run", toReveal: "run-paused")
