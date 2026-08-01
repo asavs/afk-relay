@@ -92,7 +92,7 @@ struct RunSummaryView: View {
                         .font(.headline)
                         .padding(.horizontal, AFKRelayUIStyle.standardSpacing)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .accessibilityIdentifier("run-again")
             }
         }

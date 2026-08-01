@@ -53,8 +53,14 @@ nonisolated final class AFKRelayUITests: XCTestCase {
         let edge = joystick.coordinate(
             withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)
         )
-        center.press(forDuration: 0.3, thenDragTo: edge)
-        center.press(forDuration: 0.3, thenDragTo: edge)
+        // Drag to the edge and hold there: sustained full intent spends
+        // whole tokens regardless of drag ramp timing.
+        center.press(
+            forDuration: 0.3,
+            thenDragTo: edge,
+            withVelocity: .default,
+            thenHoldForDuration: 2.0
+        )
 
         // Pause blocks the arena and resume returns to it.
         tap(app, button: "pause-run", toReveal: "run-paused")

@@ -16,16 +16,16 @@ struct PrimaryActionDock<Content: View>: View {
         .padding(.vertical, AFKRelayUIStyle.compactSpacing)
         .frame(maxWidth: .infinity)
         .background {
-            Rectangle()
-                .fill(
-                    reduceTransparency
-                        ? AnyShapeStyle(AFKRelayUIStyle.panel)
-                        : AnyShapeStyle(.ultraThinMaterial)
-                )
-                .ignoresSafeArea(edges: .bottom)
-        }
-        .overlay(alignment: .top) {
-            Divider()
+            if reduceTransparency {
+                Rectangle()
+                    .fill(AFKRelayUIStyle.panel)
+                    .ignoresSafeArea(edges: .bottom)
+            } else {
+                Rectangle()
+                    .fill(.clear)
+                    .glassEffect(.regular, in: .rect)
+                    .ignoresSafeArea(edges: .bottom)
+            }
         }
     }
 }

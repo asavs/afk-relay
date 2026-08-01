@@ -57,7 +57,7 @@ struct GameHomeView: View {
                             action: onRefreshSteps
                         )
                         .labelStyle(.iconOnly)
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.glass)
                         .buttonBorderShape(.circle)
                         .disabled(!refreshState.permitsManualRetry)
                     }
@@ -127,7 +127,7 @@ struct GameHomeView: View {
                         .font(.headline)
                         .padding(.horizontal, AFKRelayUIStyle.standardSpacing)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .disabled(!canStartRun)
                 .accessibilityHint(startBlockedReason ?? "")
                 .accessibilityIdentifier("start-run")

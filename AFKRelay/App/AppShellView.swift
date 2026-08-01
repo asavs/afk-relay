@@ -161,16 +161,21 @@ struct AppShellView: View {
             }
 
         }
+        // The joystick floats over the arena like every other HUD element —
+        // the scene ignores safe areas, so the field still renders
+        // full-bleed behind it. A safe-area inset (not an overlay) keeps
+        // the control outside the SpriteKit view's touch arbitration.
         .safeAreaInset(edge: .bottom, spacing: 0) {
             MovementControlTray(
                 availableTokens: coordinator.availableTokens,
                 isRunActive: coordinator.screen == .running,
                 onIntentChanged: coordinator.setMovementIntent
             )
+            .padding(.bottom, AFKRelayUIStyle.compactSpacing)
             .disabled(coordinator.screen != .running)
             .accessibilityHidden(coordinator.screen == .paused)
         }
-        // The overlay sits above the tray inset so pausing dims the whole
+        // The pause overlay sits above everything so pausing dims the whole
         // surface, joystick included.
         .overlay {
             if coordinator.screen == .paused {
@@ -215,7 +220,7 @@ struct AppShellView: View {
                         role: .destructive,
                         action: { showsResetConfirmation = true }
                     )
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
                     .controlSize(.large)
                     .confirmationDialog(
                         "Reset the movement bank?",

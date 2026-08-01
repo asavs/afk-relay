@@ -11,25 +11,41 @@ struct ArenaHUDView: View {
     let onPause: @MainActor () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: AFKRelayUIStyle.compactSpacing) {
+        // A compact glass chip floats top-leading; pause floats trailing.
+        // Both are overlays on the arena, never part of the field.
+        HStack(alignment: .top) {
             DiagnosticPanel(isOverlay: true) {
-                // Size-driven: the stacked layout engages the moment one
-                // line stops fitting, well before accessibility sizes.
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .center, spacing: AFKRelayUIStyle.compactSpacing) {
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: AFKRelayUIStyle.compactSpacing) {
+                        hearts
                         elapsed
-                        Spacer(minLength: AFKRelayUIStyle.compactSpacing)
-                        vitals
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        elapsed
-                        vitals
-                    }
+                    HUDResourceBar(
+                        systemImage: "shoeprints.fill",
+                        tint: AFKRelayUIStyle.player,
+                        fraction: model.staminaFraction,
+                        valueText: model.availableTokens
+                            .formatted(.number.grouping(.automatic)),
+                        accessibilityLabel: "Movement tokens",
+                        accessibilityValue: "\(model.availableTokens)"
+                    )
+
+                    // Reserved seam for future meditation-powered spells;
+                    // hidden until that resource exists so the empty gauge
+                    // cannot confuse testers.
+                    // HUDResourceBar(
+                    //     systemImage: "sparkles",
+                    //     tint: AFKRelayUIStyle.mana,
+                    //     fraction: 0,
+                    //     accessibilityLabel: "Mana",
+                    //     accessibilityValue: "Not yet available"
+                    // )
                 }
-                .font(.subheadline)
+                .font(.footnote)
             }
-            .frame(maxWidth: .infinity)
+
+            Spacer(minLength: AFKRelayUIStyle.compactSpacing)
 
             pauseButton
         }
@@ -53,32 +69,6 @@ struct ArenaHUDView: View {
             Duration.seconds(model.survivalDuration)
                 .formatted(.units(allowed: [.minutes, .seconds], width: .wide))
         )
-    }
-
-    private var vitals: some View {
-        VStack(alignment: .trailing, spacing: 5) {
-            hearts
-
-            HUDResourceBar(
-                systemImage: "shoeprints.fill",
-                tint: AFKRelayUIStyle.player,
-                fraction: model.staminaFraction,
-                valueText: model.availableTokens
-                    .formatted(.number.grouping(.automatic)),
-                accessibilityLabel: "Movement tokens",
-                accessibilityValue: "\(model.availableTokens)"
-            )
-
-            // A reserved seam for future meditation-powered spells; inert
-            // in the gameplay proof.
-            HUDResourceBar(
-                systemImage: "sparkles",
-                tint: AFKRelayUIStyle.mana,
-                fraction: 0,
-                accessibilityLabel: "Mana",
-                accessibilityValue: "Not yet available"
-            )
-        }
     }
 
     private var hearts: some View {
@@ -122,7 +112,7 @@ struct ArenaHUDView: View {
                 )
                 .contentShape(.rect)
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(.glass)
         .buttonBorderShape(.circle)
         .foregroundStyle(.white)
         .accessibilityLabel("Pause")

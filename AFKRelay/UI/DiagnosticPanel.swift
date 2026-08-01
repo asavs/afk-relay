@@ -10,23 +10,26 @@ struct DiagnosticPanel<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        // System materials keep every card native; increased contrast gets
-        // a solid opaque fill instead of translucency.
-        content
-            .padding(AFKRelayUIStyle.standardSpacing)
-            .background(
-                contrast == .increased
-                    ? AnyShapeStyle(AFKRelayUIStyle.panel)
-                    : (isOverlay
-                        ? AnyShapeStyle(.thinMaterial)
-                        : AnyShapeStyle(.regularMaterial)),
-                in: .rect(cornerRadius: AFKRelayUIStyle.panelCornerRadius)
-            )
-            .overlay {
-                if contrast == .increased {
+        // Liquid Glass keeps every card native to iOS 26; increased
+        // contrast gets a solid opaque fill instead of translucency.
+        if contrast == .increased {
+            content
+                .padding(AFKRelayUIStyle.standardSpacing)
+                .background(
+                    AFKRelayUIStyle.panel,
+                    in: .rect(cornerRadius: AFKRelayUIStyle.panelCornerRadius)
+                )
+                .overlay {
                     RoundedRectangle(cornerRadius: AFKRelayUIStyle.panelCornerRadius)
                         .stroke(.white, lineWidth: 2)
                 }
-            }
+        } else {
+            content
+                .padding(AFKRelayUIStyle.standardSpacing)
+                .glassEffect(
+                    .regular,
+                    in: .rect(cornerRadius: AFKRelayUIStyle.panelCornerRadius)
+                )
+        }
     }
 }

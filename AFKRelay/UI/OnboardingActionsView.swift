@@ -22,7 +22,7 @@ struct OnboardingActionsView: View {
                     )
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             .controlSize(.large)
             .disabled(refreshState == .refreshing)
             .accessibilityIdentifier("connect-steps")
@@ -33,7 +33,7 @@ struct OnboardingActionsView: View {
                     systemImage: "arrow.up.forward.app",
                     action: onOpenSettings
                 )
-                .buttonStyle(.bordered)
+                .buttonStyle(.glass)
                 .controlSize(.large)
             }
         }
