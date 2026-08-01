@@ -19,6 +19,8 @@ final class ArenaRenderer {
     private var attackNodes: [String: AttackNodes] = [:]
     private var renderedImpactIDs: Set<String> = []
     private var lastPlayerPosition: CGPoint?
+    private var cachedBoundaryOuter: CGRect?
+    private var cachedGridBounds: CGRect?
     private var viewportSize: CGSize = .zero
     private var arenaSize = CGSize(width: 1000, height: 1500)
 
@@ -102,34 +104,66 @@ final class ArenaRenderer {
         )
     }
 
+    /// The world has no frame. The floor grid runs edge to edge across the
+    /// whole viewport, and everything beyond the playable bounds sits in
+    /// shadow: walls read as where the light ends, not as a drawn box.
     private func updateBoundary(accessibility: ArenaAccessibilityOptions) {
-        let style = catalog.style(for: .arenaBoundary, accessibility: accessibility)
-        if boundaryNode.path?.boundingBox.size != arenaSize {
-            boundaryNode.path = CGPath(
-                rect: CGRect(origin: .zero, size: arenaSize),
-                transform: nil
-            )
+        let overhang = worldOverhang()
+        let outer = CGRect(origin: .zero, size: arenaSize)
+            .insetBy(dx: -overhang.dx, dy: -overhang.dy)
+        if cachedBoundaryOuter != outer {
+            // Four shade bands around the playfield; SKShapeNode has no
+            // fill rule, so the ring is built from rectangles.
+            let arena = CGRect(origin: .zero, size: arenaSize)
+            let path = CGMutablePath()
+            path.addRect(CGRect(
+                x: outer.minX, y: arena.maxY,
+                width: outer.width, height: outer.maxY - arena.maxY
+            ))
+            path.addRect(CGRect(
+                x: outer.minX, y: outer.minY,
+                width: outer.width, height: arena.minY - outer.minY
+            ))
+            path.addRect(CGRect(
+                x: outer.minX, y: arena.minY,
+                width: arena.minX - outer.minX, height: arena.height
+            ))
+            path.addRect(CGRect(
+                x: arena.maxX, y: arena.minY,
+                width: outer.maxX - arena.maxX, height: arena.height
+            ))
+            boundaryNode.path = path
+            cachedBoundaryOuter = outer
         }
-        apply(style, to: boundaryNode)
+
+        boundaryNode.fillColor = SKColor.black.withAlphaComponent(
+            accessibility.increaseContrast ? 0.72 : 0.5
+        )
+        boundaryNode.strokeColor = .clear
+        boundaryNode.lineWidth = 0
+        boundaryNode.zPosition = -30
     }
 
-    /// The floor grid anchors distance judgment in the otherwise empty
-    /// arena. Its look comes entirely from the catalog's background role.
+    /// The floor grid anchors distance judgment. Its look comes entirely
+    /// from the catalog's background role.
     private func updateFloorGrid(accessibility: ArenaAccessibilityOptions) {
         let style = catalog.style(for: .arenaBackground, accessibility: accessibility)
-        if gridNode.path?.boundingBox.size != arenaSize {
+        let overhang = worldOverhang()
+        let bounds = CGRect(origin: .zero, size: arenaSize)
+            .insetBy(dx: -overhang.dx, dy: -overhang.dy)
+        if cachedGridBounds != bounds {
             let spacing = 100.0
             let path = CGMutablePath()
-            var x = spacing
-            while x < arenaSize.width {
-                path.move(to: CGPoint(x: x, y: 0))
-                path.addLine(to: CGPoint(x: x, y: arenaSize.height))
+            var x = (bounds.minX / spacing).rounded(.down) * spacing
+            while x <= bounds.maxX {
+                path.move(to: CGPoint(x: x, y: bounds.minY))
+                path.addLine(to: CGPoint(x: x, y: bounds.maxY))
                 x += spacing
             }
-            var y = spacing
-            while y < arenaSize.height {
-                path.move(to: CGPoint(x: 0, y: y))
-                path.addLine(to: CGPoint(x: arenaSize.width, y: y))
+            var y = (bounds.minY / spacing).rounded(.down) * spacing
+            while y <= bounds.maxY {
+                path.move(to: CGPoint(x: bounds.minX, y: y))
+                path.addLine(to: CGPoint(x: bounds.maxX, y: y))
                 y += spacing
             }
 
@@ -142,10 +176,25 @@ final class ArenaRenderer {
             path.move(to: CGPoint(x: center.x, y: center.y - arm))
             path.addLine(to: CGPoint(x: center.x, y: center.y + arm))
             gridNode.path = path
+            cachedGridBounds = bounds
         }
         gridNode.fillColor = .clear
         gridNode.strokeColor = style.strokeColor
         gridNode.lineWidth = style.lineWidth
+        gridNode.zPosition = -40
+    }
+
+    /// World-space distance from the arena edges to the viewport edges,
+    /// with margin so the shaded out-of-bounds always reaches the screen.
+    private func worldOverhang() -> (dx: Double, dy: Double) {
+        let scale = min(
+            viewportSize.width / max(arenaSize.width, 1),
+            viewportSize.height / max(arenaSize.height, 1)
+        )
+        guard scale > 0 else { return (200, 200) }
+        let dx = (viewportSize.width / scale - arenaSize.width) / 2 + 200
+        let dy = (viewportSize.height / scale - arenaSize.height) / 2 + 200
+        return (dx, dy)
     }
 
     private func updateEntities(
@@ -173,26 +222,17 @@ final class ArenaRenderer {
         let body = SKSpriteNode()
         let hurtbox = SKShapeNode()
         let facingMarker = SKShapeNode()
-        let healthBackground = SKSpriteNode(color: .black, size: .zero)
-        let healthFill = SKSpriteNode(color: .white, size: .zero)
         let identifier = makeLabel()
 
         container.name = "entity.\(entity.id)"
         body.name = "entity.body"
         hurtbox.name = "entity.hurtbox"
         facingMarker.name = "entity.facing"
-        healthBackground.name = "entity.health.background"
-        healthFill.name = "entity.health.fill"
         identifier.name = "entity.identifier"
-
-        healthBackground.anchorPoint = CGPoint(x: 0, y: 0.5)
-        healthFill.anchorPoint = CGPoint(x: 0, y: 0.5)
 
         container.addChild(hurtbox)
         container.addChild(body)
         container.addChild(facingMarker)
-        container.addChild(healthBackground)
-        container.addChild(healthFill)
         container.addChild(identifier)
         entityLayer.addChild(container)
 
@@ -201,8 +241,6 @@ final class ArenaRenderer {
             body: body,
             hurtbox: hurtbox,
             facingMarker: facingMarker,
-            healthBackground: healthBackground,
-            healthFill: healthFill,
             identifier: identifier,
             previousHitPoints: entity.hitPoints
         )
@@ -248,18 +286,6 @@ final class ArenaRenderer {
         nodes.facingMarker.lineWidth = max(3, bodyStyle.lineWidth * 0.75)
         nodes.facingMarker.zRotation = entity.facingAngle
         nodes.facingMarker.zPosition = 3
-
-        let healthWidth = max(42, diameter)
-        let healthHeight = max(7, diameter * 0.09)
-        let healthPosition = CGPoint(x: -healthWidth / 2, y: entity.radius + 18)
-        nodes.healthBackground.position = healthPosition
-        nodes.healthBackground.size = CGSize(width: healthWidth, height: healthHeight)
-        nodes.healthBackground.zPosition = 4
-        nodes.healthFill.position = healthPosition
-        nodes.healthFill.size = CGSize(width: healthWidth, height: healthHeight)
-        nodes.healthFill.color = bodyStyle.fillColor
-        nodes.healthFill.xScale = CGFloat(entity.hitPoints) / CGFloat(entity.maximumHitPoints)
-        nodes.healthFill.zPosition = 5
 
         nodes.identifier.text = entity.id
         nodes.identifier.position = CGPoint(x: 0, y: -(entity.radius + 28))
@@ -666,8 +692,6 @@ private extension ArenaRenderer {
         let body: SKSpriteNode
         let hurtbox: SKShapeNode
         let facingMarker: SKShapeNode
-        let healthBackground: SKSpriteNode
-        let healthFill: SKSpriteNode
         let identifier: SKLabelNode
         var previousHitPoints: Int
 
@@ -676,8 +700,6 @@ private extension ArenaRenderer {
             body: SKSpriteNode,
             hurtbox: SKShapeNode,
             facingMarker: SKShapeNode,
-            healthBackground: SKSpriteNode,
-            healthFill: SKSpriteNode,
             identifier: SKLabelNode,
             previousHitPoints: Int
         ) {
@@ -685,8 +707,6 @@ private extension ArenaRenderer {
             self.body = body
             self.hurtbox = hurtbox
             self.facingMarker = facingMarker
-            self.healthBackground = healthBackground
-            self.healthFill = healthFill
             self.identifier = identifier
             self.previousHitPoints = previousHitPoints
         }

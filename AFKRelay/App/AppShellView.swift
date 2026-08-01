@@ -134,7 +134,7 @@ struct AppShellView: View {
                 scene: coordinator.arenaScene,
                 options: [.ignoresSiblingOrder]
             )
-            .ignoresSafeArea(edges: .horizontal)
+            .ignoresSafeArea()
             .accessibilityElement()
             .accessibilityLabel("Tactical survival arena")
             .accessibilityAddTraits(.allowsDirectInteraction)

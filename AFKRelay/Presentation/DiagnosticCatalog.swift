@@ -53,6 +53,13 @@ final class DiagnosticCatalog: ArenaPresentationCatalog {
                 lineWidth: accessibility.increaseContrast ? 7 : 5,
                 fillAlpha: 1
             )
+        case .enemyBodyWounded:
+            PresentationStyle(
+                fillColor: palette.enemyWounded,
+                strokeColor: palette.primaryInk,
+                lineWidth: accessibility.increaseContrast ? 7 : 5,
+                fillAlpha: 1
+            )
         case .enemyHurtbox:
             PresentationStyle(
                 fillColor: .clear,
@@ -158,7 +165,9 @@ final class DiagnosticCatalog: ArenaPresentationCatalog {
 
             switch role {
             case .enemyBody:
-                drawEnemy(in: context, accessibility: accessibility)
+                drawEnemy(in: context, accessibility: accessibility, wounded: false)
+            case .enemyBodyWounded:
+                drawEnemy(in: context, accessibility: accessibility, wounded: true)
             default:
                 drawPlayer(in: context, accessibility: accessibility)
             }
@@ -195,7 +204,8 @@ final class DiagnosticCatalog: ArenaPresentationCatalog {
     // direction per the adapter's +Y convention.
     private func drawEnemy(
         in context: CGContext,
-        accessibility: ArenaAccessibilityOptions
+        accessibility: ArenaAccessibilityOptions,
+        wounded: Bool
     ) {
         context.move(to: CGPoint(x: 64, y: 8))
         context.addLine(to: CGPoint(x: 118, y: 92))
@@ -209,6 +219,17 @@ final class DiagnosticCatalog: ArenaPresentationCatalog {
         context.move(to: CGPoint(x: 64, y: 20))
         context.addLine(to: CGPoint(x: 64, y: 56))
         context.strokePath()
+
+        if wounded {
+            // The wound reads by shape as well as tint: a jagged crack
+            // through the wing.
+            context.setLineWidth(accessibility.increaseContrast ? 7 : 5)
+            context.move(to: CGPoint(x: 88, y: 44))
+            context.addLine(to: CGPoint(x: 78, y: 60))
+            context.addLine(to: CGPoint(x: 92, y: 66))
+            context.addLine(to: CGPoint(x: 82, y: 84))
+            context.strokePath()
+        }
 
         if accessibility.differentiateWithoutColor {
             context.setLineWidth(3)
@@ -228,6 +249,7 @@ private extension DiagnosticCatalog {
         let primaryInk: SKColor
         let player: SKColor
         let enemy: SKColor
+        let enemyWounded: SKColor
         let telegraph: SKColor
         let attack: SKColor
         let playerDamage: SKColor
@@ -247,6 +269,7 @@ private extension DiagnosticCatalog {
                 : SKColor(red: 0.02, green: 0.04, blue: 0.07, alpha: 1)
             player = SKColor(red: 0.22, green: 0.95, blue: 1, alpha: 1)
             enemy = SKColor(red: 1, green: 0.35, blue: 0.46, alpha: 1)
+            enemyWounded = SKColor(red: 1, green: 0.85, blue: 0.3, alpha: 1)
             telegraph = SKColor(red: 1, green: 0.76, blue: 0.18, alpha: 1)
             attack = SKColor(red: 1, green: 0.28, blue: 0.16, alpha: 1)
             playerDamage = SKColor(red: 1, green: 0.98, blue: 0.92, alpha: 1)

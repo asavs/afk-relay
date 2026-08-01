@@ -21,7 +21,11 @@ struct ArenaRenderEntity: Identifiable, Equatable, Sendable {
         hitPoints: Int,
         maximumHitPoints: Int
     ) {
-        precondition(role == .playerBody || role == .enemyBody)
+        precondition(
+            role == .playerBody
+                || role == .enemyBody
+                || role == .enemyBodyWounded
+        )
         self.id = id
         self.role = role
         self.position = position

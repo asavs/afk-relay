@@ -8,6 +8,10 @@ enum PresentationRole: String, CaseIterable, Sendable {
     case playerBody
     case playerHurtbox
     case enemyBody
+    /// An enemy that has taken damage but still lives. A damage *state*,
+    /// not an asset: future catalogs may render limping bodies or broken
+    /// armor; the diagnostic catalog renders a wounded tint and crack.
+    case enemyBodyWounded
     case enemyHurtbox
     case attackTelegraph
     case attackActive

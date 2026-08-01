@@ -70,9 +70,18 @@ enum ArenaSnapshotPresentationAdapter {
         // Renderer silhouettes point along +Y in texture space.
         let facingAngle = atan2(entity.facing.y, entity.facing.x) - .pi / 2
 
+        // Damage state travels as a semantic role so a catalog can render
+        // wounded bodies however it likes (tint, limp, broken armor).
+        let role: PresentationRole = if entity.isPlayer {
+            .playerBody
+        } else if entity.hitPoints < maximumHitPoints {
+            .enemyBodyWounded
+        } else {
+            .enemyBody
+        }
         return ArenaRenderEntity(
             id: entity.isPlayer ? "P0" : "E\(entity.id)",
-            role: entity.isPlayer ? .playerBody : .enemyBody,
+            role: role,
             position: point(entity.position),
             radius: entity.radius,
             facingAngle: facingAngle,
