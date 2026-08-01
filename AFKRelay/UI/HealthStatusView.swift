@@ -9,7 +9,7 @@ struct HealthStatusView: View {
     let maximum: Int
 
     var body: some View {
-        DiagnosticPanel {
+        DiagnosticPanel(isOverlay: true) {
             VStack(alignment: .trailing, spacing: AFKRelayUIStyle.compactSpacing) {
                 // "Life", never "Health": this is the game stat, and it must
                 // not read as a display of Apple Health data.

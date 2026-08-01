@@ -9,6 +9,7 @@ final class ArenaRenderer {
     let rootNode = SKNode()
 
     private let catalog: any ArenaPresentationCatalog
+    private let gridNode = SKShapeNode()
     private let boundaryNode = SKShapeNode()
     private let attackLayer = SKNode()
     private let entityLayer = SKNode()
@@ -52,22 +53,27 @@ final class ArenaRenderer {
             layoutWorld()
         }
 
+        rootNode.scene?.backgroundColor = catalog
+            .style(for: .arenaBackground, accessibility: accessibility)
+            .fillColor
+        updateFloorGrid(accessibility: accessibility)
         updateBoundary(accessibility: accessibility)
         updateEntities(snapshot.entities, diagnostics: options, accessibility: accessibility)
         updateAttacks(snapshot.attacks, diagnostics: options, accessibility: accessibility)
         updateImpacts(snapshot.impacts, accessibility: accessibility)
         updateDebugVectors(snapshot.debugVectors, diagnostics: options, accessibility: accessibility)
-        updateMetrics(snapshot.diagnostics, diagnostics: options, accessibility: accessibility)
     }
 
     private func configureNodeTree() {
         rootNode.name = "presentation.root"
+        rootNode.addChild(gridNode)
         rootNode.addChild(boundaryNode)
         rootNode.addChild(attackLayer)
         rootNode.addChild(entityLayer)
         rootNode.addChild(impactLayer)
         rootNode.addChild(diagnosticsLayer)
 
+        gridNode.name = "arena.floor-grid"
         boundaryNode.name = "arena.boundary"
         attackLayer.name = "presentation.attacks"
         entityLayer.name = "presentation.entities"
@@ -97,11 +103,39 @@ final class ArenaRenderer {
 
     private func updateBoundary(accessibility: ArenaAccessibilityOptions) {
         let style = catalog.style(for: .arenaBoundary, accessibility: accessibility)
-        boundaryNode.path = CGPath(
-            rect: CGRect(origin: .zero, size: arenaSize),
-            transform: nil
-        )
+        if boundaryNode.path?.boundingBox.size != arenaSize {
+            boundaryNode.path = CGPath(
+                rect: CGRect(origin: .zero, size: arenaSize),
+                transform: nil
+            )
+        }
         apply(style, to: boundaryNode)
+    }
+
+    /// The floor grid anchors distance judgment in the otherwise empty
+    /// arena. Its look comes entirely from the catalog's background role.
+    private func updateFloorGrid(accessibility: ArenaAccessibilityOptions) {
+        let style = catalog.style(for: .arenaBackground, accessibility: accessibility)
+        if gridNode.path?.boundingBox.size != arenaSize {
+            let spacing = 100.0
+            let path = CGMutablePath()
+            var x = spacing
+            while x < arenaSize.width {
+                path.move(to: CGPoint(x: x, y: 0))
+                path.addLine(to: CGPoint(x: x, y: arenaSize.height))
+                x += spacing
+            }
+            var y = spacing
+            while y < arenaSize.height {
+                path.move(to: CGPoint(x: 0, y: y))
+                path.addLine(to: CGPoint(x: arenaSize.width, y: y))
+                y += spacing
+            }
+            gridNode.path = path
+        }
+        gridNode.fillColor = .clear
+        gridNode.strokeColor = style.strokeColor
+        gridNode.lineWidth = style.lineWidth
     }
 
     private func updateEntities(
@@ -393,30 +427,6 @@ final class ArenaRenderer {
             node.zPosition = 24
             container.addChild(node)
         }
-    }
-
-    private func updateMetrics(
-        _ metrics: ArenaDiagnosticsMetrics?,
-        diagnostics: DiagnosticsOptions,
-        accessibility: ArenaAccessibilityOptions
-    ) {
-        diagnosticsLayer.childNode(withName: "debug.metrics")?.removeFromParent()
-        guard diagnostics.isEnabled,
-              diagnostics.showsFrameMetrics,
-              let metrics
-        else {
-            return
-        }
-
-        let style = catalog.style(for: .diagnosticText, accessibility: accessibility)
-        let label = makeLabel()
-        label.name = "debug.metrics"
-        label.text = "SIM \(metrics.fixedStepHz)Hz  RENDER \(metrics.renderedFramesPerSecond)fps  E \(metrics.livingEnemyCount)  A \(metrics.activeAttackCount)  T \(metrics.simulationTick)"
-        label.horizontalAlignmentMode = .left
-        label.position = CGPoint(x: 16, y: arenaSize.height - 32)
-        label.fontColor = style.fillColor
-        label.zPosition = 30
-        diagnosticsLayer.addChild(label)
     }
 
     private func apply(_ style: PresentationStyle, to node: SKShapeNode) {

@@ -15,10 +15,14 @@ final class DiagnosticCatalog: ArenaPresentationCatalog {
 
         return switch role {
         case .arenaBackground:
+            // The stroke describes the floor grid; the renderer draws it
+            // from this role so a future catalog can restyle or remove it.
             PresentationStyle(
                 fillColor: palette.background,
-                strokeColor: palette.background,
-                lineWidth: 0,
+                strokeColor: palette.boundary.withAlphaComponent(
+                    accessibility.increaseContrast ? 0.3 : 0.16
+                ),
+                lineWidth: 1,
                 fillAlpha: 1
             )
         case .arenaBoundary:

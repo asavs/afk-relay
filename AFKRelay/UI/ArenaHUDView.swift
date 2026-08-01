@@ -37,7 +37,7 @@ struct ArenaHUDView: View {
     }
 
     private var bankAndTime: some View {
-        DiagnosticPanel {
+        DiagnosticPanel(isOverlay: true) {
             VStack(alignment: .leading, spacing: AFKRelayUIStyle.compactSpacing) {
                 Label(
                     "\(model.availableTokens.formatted(.number.grouping(.automatic))) tokens",
