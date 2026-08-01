@@ -113,6 +113,12 @@ final class GameCoordinator {
         availableTokens > 0 && !isPersistenceBlocked
     }
 
+    // Read when a screen is built; records only change across screen
+    // transitions, so plain reads of the untracked progress state suffice.
+    var bestSurvivalDuration: TimeInterval { playerProgress.bestSurvivalDuration }
+    var bestFriendlyFireDefeats: Int { playerProgress.bestFriendlyFireDefeats }
+    var hasRunRecords: Bool { playerProgress.completedRunCount > 0 }
+
     nonisolated static func screenAfterSuccessfulPersistenceRetry(
         currentScreen: GameScreen,
         hasActiveRun: Bool,

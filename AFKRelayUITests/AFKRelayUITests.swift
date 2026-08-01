@@ -58,7 +58,7 @@ nonisolated final class AFKRelayUITests: XCTestCase {
         XCTAssertTrue(
             element(app, "run-summary").waitForExistence(timeout: 120)
         )
-        XCTAssertTrue(app.staticTexts["Run Complete"].exists)
+        XCTAssertTrue(app.staticTexts["Run Over"].exists)
         XCTAssertTrue(
             app.staticTexts["Runs are recorded on this iPhone only."].exists
         )

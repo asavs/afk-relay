@@ -4,6 +4,9 @@ struct GameHomeView: View {
     let availableTokens: Int64
     let canStartRun: Bool
     let refreshState: WalletRefreshPresentationState
+    let hasRunRecords: Bool
+    let bestSurvivalDuration: TimeInterval
+    let bestFriendlyFireDefeats: Int
     let onStartRun: @MainActor () -> Void
     let onRefreshSteps: @MainActor () -> Void
     let onShowSettings: @MainActor () -> Void
@@ -37,29 +40,58 @@ struct GameHomeView: View {
                         Text("Real movement. Tactical survival.")
                             .font(.headline)
                             .foregroundStyle(.secondary)
-
-                        Text("Bait enemies into hitting each other — you have no weapon.")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
                     }
 
                     WalletBankView(availableTokens: availableTokens)
 
-                    DiagnosticPanel {
-                        VStack(alignment: .leading, spacing: AFKRelayUIStyle.standardSpacing) {
-                            WalletRefreshStatusView(state: refreshState)
+                    // The wallet refresh is maintenance, not play: one quiet
+                    // row, with retry tucked behind an icon.
+                    HStack(alignment: .top, spacing: AFKRelayUIStyle.compactSpacing) {
+                        WalletRefreshStatusView(state: refreshState)
+                        Spacer(minLength: 0)
+                        Button(
+                            "Refresh Steps",
+                            systemImage: "arrow.clockwise",
+                            action: onRefreshSteps
+                        )
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.circle)
+                        .disabled(!refreshState.permitsManualRetry)
+                    }
+                    .padding(.horizontal, AFKRelayUIStyle.compactSpacing)
 
-                            Button(
-                                "Refresh Steps",
-                                systemImage: "arrow.clockwise",
-                                action: onRefreshSteps
-                            )
-                            .buttonStyle(.bordered)
-                            .controlSize(.large)
-                            .disabled(!refreshState.permitsManualRetry)
+                    if hasRunRecords {
+                        DiagnosticPanel {
+                            VStack(alignment: .leading, spacing: AFKRelayUIStyle.standardSpacing) {
+                                Label("Personal Bests", systemImage: "trophy.fill")
+                                    .font(.headline)
+
+                                LabeledContent("Survival") {
+                                    Text(
+                                        Duration.seconds(bestSurvivalDuration)
+                                            .formatted(.time(pattern: .minuteSecond))
+                                    )
+                                    .monospacedDigit()
+                                }
+
+                                LabeledContent("Enemies baited") {
+                                    Text(bestFriendlyFireDefeats, format: .number)
+                                        .monospacedDigit()
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        DiagnosticPanel {
+                            Label(
+                                "Bait enemies into hitting each other — you have no weapon.",
+                                systemImage: "lightbulb"
+                            )
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
                 }
                 .padding(AFKRelayUIStyle.screenPadding)
@@ -81,12 +113,15 @@ struct GameHomeView: View {
                         .foregroundStyle(AFKRelayUIStyle.warning)
                     }
 
-                    Button("Start Run", systemImage: "play.fill", action: onStartRun)
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .disabled(!canStartRun)
-                        .accessibilityHint(startBlockedReason ?? "")
-                        .accessibilityIdentifier("start-run")
+                    Button(action: onStartRun) {
+                        Label("Start Run", systemImage: "play.fill")
+                            .font(.title3.bold())
+                            .frame(maxWidth: .infinity, minHeight: AFKRelayUIStyle.minimumTapTarget)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!canStartRun)
+                    .accessibilityHint(startBlockedReason ?? "")
+                    .accessibilityIdentifier("start-run")
                 }
             }
         }

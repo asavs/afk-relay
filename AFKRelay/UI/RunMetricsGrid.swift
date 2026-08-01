@@ -18,13 +18,15 @@ struct RunMetricsGrid: View {
                     horizontalSpacing: AFKRelayUIStyle.compactSpacing,
                     verticalSpacing: AFKRelayUIStyle.compactSpacing
                 ) {
+                    // Survival is the run's headline; the counting stats
+                    // share the second row.
                     GridRow {
                         survived
-                        defeats
+                            .gridCellColumns(2)
                     }
                     GridRow {
+                        defeats
                         spent
-                            .gridCellColumns(2)
                     }
                 }
             }

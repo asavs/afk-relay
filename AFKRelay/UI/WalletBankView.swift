@@ -11,9 +11,10 @@ struct WalletBankView: View {
                     .foregroundStyle(.secondary)
 
                 Text(availableTokens, format: .number.grouping(.automatic))
-                    .font(.largeTitle)
-                    .bold()
+                    .font(.system(size: 56, weight: .bold, design: .rounded))
                     .monospacedDigit()
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
 
                 Text("tokens available")
                     .font(.callout)

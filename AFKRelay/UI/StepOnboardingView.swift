@@ -45,8 +45,10 @@ struct StepOnboardingView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
-                    WalletRefreshStatusView(state: refreshState)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    DiagnosticPanel {
+                        WalletRefreshStatusView(state: refreshState)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
                 .padding(AFKRelayUIStyle.screenPadding)
             }

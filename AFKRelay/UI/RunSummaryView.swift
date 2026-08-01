@@ -18,7 +18,7 @@ struct RunSummaryView: View {
                         .accessibilityHidden(true)
 
                     VStack(spacing: AFKRelayUIStyle.compactSpacing) {
-                        Text("Run Complete")
+                        Text("Run Over")
                             .font(.largeTitle)
                             .bold()
                             .accessibilityAddTraits(.isHeader)
@@ -28,6 +28,15 @@ struct RunSummaryView: View {
                     }
 
                     RunMetricsGrid(model: model)
+
+                    if model.friendlyFireDefeats == 0 {
+                        Label(
+                            "Lure enemies into each other’s sweeps — their attacks are your only weapon.",
+                            systemImage: "lightbulb"
+                        )
+                        .font(.callout)
+                        .foregroundStyle(AFKRelayUIStyle.warning)
+                    }
 
                     Text("Runs are recorded on this iPhone only.")
                         .font(.footnote)

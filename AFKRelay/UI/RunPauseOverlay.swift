@@ -29,6 +29,7 @@ struct RunPauseOverlay: View {
                     )
                     .buttonStyle(.bordered)
                     .controlSize(.large)
+                    .tint(AFKRelayUIStyle.enemy)
                     .accessibilityIdentifier("end-run")
 
                     Button("Settings", systemImage: "gearshape", action: onShowSettings)

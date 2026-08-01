@@ -92,6 +92,9 @@ struct AppShellView: View {
                 availableTokens: coordinator.availableTokens,
                 canStartRun: coordinator.canStartRun,
                 refreshState: coordinator.refreshState,
+                hasRunRecords: coordinator.hasRunRecords,
+                bestSurvivalDuration: coordinator.bestSurvivalDuration,
+                bestFriendlyFireDefeats: coordinator.bestFriendlyFireDefeats,
                 onStartRun: coordinator.startRun,
                 onRefreshSteps: handleRetryOrRefresh,
                 onShowSettings: { showsSettings = true }
