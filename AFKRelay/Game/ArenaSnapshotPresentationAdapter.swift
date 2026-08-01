@@ -22,11 +22,15 @@ enum ArenaSnapshotPresentationAdapter {
                 balance: balance
             )
         }
+        // The tick that completes friendly-fire discovery marks its
+        // friendly-fire impacts for amplified presentation (REQ-GAME-007).
+        let emphasizeFriendlyFire = events.contains(.tutorialCompleted)
         let impacts = events.enumerated().compactMap { index, event in
             makeImpact(
                 event,
                 index: index,
-                snapshot: snapshot
+                snapshot: snapshot,
+                emphasizeFriendlyFire: emphasizeFriendlyFire
             )
         }
         let vectors = makeVectors(
@@ -135,17 +139,22 @@ enum ArenaSnapshotPresentationAdapter {
     private static func makeImpact(
         _ event: GameEvent,
         index: Int,
-        snapshot: ArenaSnapshot
+        snapshot: ArenaSnapshot,
+        emphasizeFriendlyFire: Bool
     ) -> ArenaRenderImpact? {
         guard case let .damaged(target, source, _, position) = event else {
             return nil
         }
 
         let tick = Int(max(0, (snapshot.elapsed * 60).rounded(.down)))
+        let kind: ArenaRenderImpact.Kind = target == snapshot.player.id
+            ? .playerDamage
+            : .friendlyFire
         return ArenaRenderImpact(
             id: "I\(tick)-\(source)-\(target)-\(index)",
             position: point(position),
-            kind: target == snapshot.player.id ? .playerDamage : .friendlyFire
+            kind: kind,
+            isEmphasized: emphasizeFriendlyFire && kind == .friendlyFire
         )
     }
 

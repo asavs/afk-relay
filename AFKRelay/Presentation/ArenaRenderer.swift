@@ -18,6 +18,7 @@ final class ArenaRenderer {
     private var entityNodes: [String: EntityNodes] = [:]
     private var attackNodes: [String: AttackNodes] = [:]
     private var renderedImpactIDs: Set<String> = []
+    private var lastPlayerPosition: CGPoint?
     private var viewportSize: CGSize = .zero
     private var arenaSize = CGSize(width: 1000, height: 1500)
 
@@ -131,6 +132,15 @@ final class ArenaRenderer {
                 path.addLine(to: CGPoint(x: arenaSize.width, y: y))
                 y += spacing
             }
+
+            // A center cross anchors orientation: the spawn point reads as
+            // a place, not just more floor.
+            let center = CGPoint(x: arenaSize.width / 2, y: arenaSize.height / 2)
+            let arm = 18.0
+            path.move(to: CGPoint(x: center.x - arm, y: center.y))
+            path.addLine(to: CGPoint(x: center.x + arm, y: center.y))
+            path.move(to: CGPoint(x: center.x, y: center.y - arm))
+            path.addLine(to: CGPoint(x: center.x, y: center.y + arm))
             gridNode.path = path
         }
         gridNode.fillColor = .clear
@@ -151,6 +161,9 @@ final class ArenaRenderer {
         for entity in entities {
             let nodes = entityNodes[entity.id] ?? makeEntityNodes(for: entity)
             entityNodes[entity.id] = nodes
+            if entity.role == .playerBody {
+                emitMovementTrail(for: entity, accessibility: accessibility)
+            }
             update(nodes, with: entity, diagnostics: diagnostics, accessibility: accessibility)
         }
     }
@@ -258,6 +271,40 @@ final class ArenaRenderer {
         nodes.previousHitPoints = entity.hitPoints
     }
 
+    /// Spent movement leaves a fading wake behind the player, giving the
+    /// core verb a visible body. Pure presentation; skipped entirely for
+    /// Reduce Motion users.
+    private func emitMovementTrail(
+        for entity: ArenaRenderEntity,
+        accessibility: ArenaAccessibilityOptions
+    ) {
+        defer { lastPlayerPosition = entity.position }
+        guard !accessibility.reduceMotion,
+              let previous = lastPlayerPosition
+        else {
+            return
+        }
+
+        let dx = entity.position.x - previous.x
+        let dy = entity.position.y - previous.y
+        guard dx * dx + dy * dy > 4 else { return }
+
+        let style = catalog.style(for: .playerBody, accessibility: accessibility)
+        let wake = SKShapeNode(circleOfRadius: entity.radius * 0.4)
+        wake.position = previous
+        wake.fillColor = style.fillColor.withAlphaComponent(0.28)
+        wake.strokeColor = .clear
+        wake.zPosition = 1
+        entityLayer.addChild(wake)
+        wake.run(.sequence([
+            .group([
+                .fadeOut(withDuration: 0.4),
+                .scale(to: 0.4, duration: 0.4),
+            ]),
+            .removeFromParent(),
+        ]))
+    }
+
     private func showDamageFeedback(on node: SKNode, reduceMotion: Bool) {
         node.removeAction(forKey: "damage-feedback")
         let fade = SKAction.sequence([
@@ -352,10 +399,28 @@ final class ArenaRenderer {
         nodes.active.zPosition = -10
         nodes.active.isHidden = attack.phase != .active
 
-        nodes.telegraph.alpha = switch attack.phase {
-        case .telegraph: 1
-        case .active: 0.55
-        case .recovery: 0.2
+        // The telegraph breathes while it warns; the pulse is presentation
+        // only and never runs for Reduce Motion users.
+        if attack.phase == .telegraph, !accessibility.reduceMotion {
+            if nodes.telegraph.action(forKey: "telegraph-pulse") == nil {
+                nodes.telegraph.alpha = 1
+                nodes.telegraph.run(
+                    .repeatForever(
+                        .sequence([
+                            .fadeAlpha(to: 0.55, duration: 0.28),
+                            .fadeAlpha(to: 1, duration: 0.28),
+                        ])
+                    ),
+                    withKey: "telegraph-pulse"
+                )
+            }
+        } else {
+            nodes.telegraph.removeAction(forKey: "telegraph-pulse")
+            nodes.telegraph.alpha = switch attack.phase {
+            case .telegraph: 1
+            case .active: 0.55
+            case .recovery: 0.2
+            }
         }
 
         nodes.cueLines.path = attackCuePath(for: attack)
@@ -391,14 +456,48 @@ final class ArenaRenderer {
             node.zPosition = 12
             impactLayer.addChild(node)
 
-            let fade = SKAction.fadeOut(withDuration: accessibility.reduceMotion ? 0.35 : 0.55)
+            // The discovery hit is the loudest effect in the game: a longer,
+            // larger burst plus an expanding ring (static ring under Reduce
+            // Motion) so the teaching moment cannot be missed.
+            let duration = impact.isEmphasized ? 1.1 : 0.55
+            let targetScale: CGFloat = impact.isEmphasized ? 3.4 : 1.8
+            let fade = SKAction.fadeOut(
+                withDuration: accessibility.reduceMotion ? 0.35 : duration
+            )
             let action: SKAction
             if accessibility.reduceMotion {
                 action = fade
             } else {
-                action = .group([fade, .scale(to: 1.8, duration: 0.55)])
+                action = .group([fade, .scale(to: targetScale, duration: duration)])
             }
             node.run(.sequence([action, .removeFromParent()]))
+
+            if impact.isEmphasized {
+                let ring = SKShapeNode(circleOfRadius: 30)
+                ring.name = "impact.ring.\(impact.id)"
+                ring.position = impact.position
+                ring.fillColor = .clear
+                ring.strokeColor = style.strokeColor
+                ring.lineWidth = max(4, style.lineWidth)
+                ring.zPosition = 11
+                impactLayer.addChild(ring)
+
+                if accessibility.reduceMotion {
+                    ring.setScale(2.4)
+                    ring.run(.sequence([
+                        .fadeOut(withDuration: 0.9),
+                        .removeFromParent(),
+                    ]))
+                } else {
+                    ring.run(.sequence([
+                        .group([
+                            .scale(to: 4.5, duration: 1.0),
+                            .fadeOut(withDuration: 1.0),
+                        ]),
+                        .removeFromParent(),
+                    ]))
+                }
+            }
         }
 
         if renderedImpactIDs.count > 512 {

@@ -190,30 +190,31 @@ final class DiagnosticCatalog: ArenaPresentationCatalog {
         }
     }
 
+    // A chevron aimed along the facing axis: the silhouette itself says
+    // "incoming" the way a diamond never can. Texture-top is the facing
+    // direction per the adapter's +Y convention.
     private func drawEnemy(
         in context: CGContext,
         accessibility: ArenaAccessibilityOptions
     ) {
         context.move(to: CGPoint(x: 64, y: 8))
-        context.addLine(to: CGPoint(x: 120, y: 64))
-        context.addLine(to: CGPoint(x: 64, y: 120))
-        context.addLine(to: CGPoint(x: 8, y: 64))
+        context.addLine(to: CGPoint(x: 118, y: 92))
+        context.addLine(to: CGPoint(x: 64, y: 64))
+        context.addLine(to: CGPoint(x: 10, y: 92))
         context.closePath()
         context.drawPath(using: .fillStroke)
 
         context.setStrokeColor(SKColor.black.cgColor)
         context.setLineWidth(accessibility.increaseContrast ? 9 : 7)
-        context.move(to: CGPoint(x: 39, y: 39))
-        context.addLine(to: CGPoint(x: 89, y: 89))
-        context.move(to: CGPoint(x: 89, y: 39))
-        context.addLine(to: CGPoint(x: 39, y: 89))
+        context.move(to: CGPoint(x: 64, y: 20))
+        context.addLine(to: CGPoint(x: 64, y: 56))
         context.strokePath()
 
         if accessibility.differentiateWithoutColor {
             context.setLineWidth(3)
-            for offset in stride(from: -24, through: 24, by: 12) {
-                context.move(to: CGPoint(x: 40 + offset, y: 76))
-                context.addLine(to: CGPoint(x: 52 + offset, y: 88))
+            for offset in stride(from: -18, through: 18, by: 12) {
+                context.move(to: CGPoint(x: 52 + offset, y: 74))
+                context.addLine(to: CGPoint(x: 64 + offset, y: 86))
             }
             context.strokePath()
         }
