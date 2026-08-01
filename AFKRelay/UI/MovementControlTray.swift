@@ -17,16 +17,16 @@ struct MovementControlTray: View {
                 onIntentChanged: onIntentChanged
             )
 
-            Label(statusText, systemImage: statusSymbol)
-                .font(.callout)
-                .bold()
-                .foregroundStyle(
-                    availableTokens > 0 && isRunActive
-                        ? .primary
-                        : AFKRelayUIStyle.warning
-                )
-                .monospacedDigit()
-                .accessibilityIdentifier("movement-bank-status")
+            // The HUD already shows the live token count; the tray speaks
+            // only when something needs attention.
+            if let statusText {
+                Label(statusText, systemImage: statusSymbol)
+                    .font(.callout)
+                    .bold()
+                    .foregroundStyle(AFKRelayUIStyle.warning)
+                    .monospacedDigit()
+                    .accessibilityIdentifier("movement-bank-status")
+            }
         }
         .padding(.horizontal, AFKRelayUIStyle.screenPadding)
         .padding(.vertical, AFKRelayUIStyle.compactSpacing)
@@ -47,13 +47,13 @@ struct MovementControlTray: View {
         }
     }
 
-    private var statusText: String {
+    private var statusText: String? {
         if !isRunActive {
             "Run paused"
-        } else if availableTokens > 0 {
-            "\(availableTokens.formatted(.number.grouping(.automatic))) movement tokens"
-        } else {
+        } else if availableTokens == 0 {
             "Out of tokens — walk to earn more"
+        } else {
+            nil
         }
     }
 

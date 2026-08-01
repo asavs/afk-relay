@@ -8,8 +8,8 @@ enum AFKRelayUIStyle {
     static let panelCornerRadius = 20.0
     static let minimumTapTarget = 44.0
     static let pauseDimOpacity = 0.62
-    static let joystickDiameter = 148.0
-    static let joystickKnobDiameter = 62.0
+    static let joystickDiameter = 124.0
+    static let joystickKnobDiameter = 54.0
 
     static let background = Color(
         red: 0.025,
