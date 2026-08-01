@@ -80,6 +80,7 @@ struct RunSummaryView: View {
         }
         .foregroundStyle(.white)
         .toolbar(.hidden, for: .navigationBar)
+        // Same bar grammar as home: icon pod, wide labeled launch pod.
         .toolbar {
             ToolbarItemGroup(placement: .bottomBar) {
                 Button("Return Home", systemImage: "house", action: onReturnHome)
@@ -88,12 +89,19 @@ struct RunSummaryView: View {
                 Spacer()
 
                 Button(action: onRunAgain) {
-                    Label("Run Again", systemImage: "arrow.clockwise")
-                        .font(.headline)
-                        .padding(.horizontal, AFKRelayUIStyle.standardSpacing)
+                    // Hand-made icon/text pairing; see GameHomeView's note.
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Run Again!")
+                    }
+                    .font(.headline)
+                    .padding(.horizontal, AFKRelayUIStyle.standardSpacing)
                 }
-                .buttonStyle(.glassProminent)
-                .accessibilityIdentifier("run-again")
+                    .buttonStyle(.glassProminent)
+                    .accessibilityLabel("Run Again")
+                    .accessibilityIdentifier("run-again")
+
+                Spacer()
             }
         }
     }

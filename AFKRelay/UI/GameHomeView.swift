@@ -96,25 +96,29 @@ struct GameHomeView: View {
                         }
                     }
 
-                    // The reason a disabled Start Run is disabled reads in
-                    // the content, above the control it explains.
-                    if let startBlockedReason {
-                        Label(startBlockedReason, systemImage: "shoeprints.fill")
-                            .font(.callout)
-                            .foregroundStyle(AFKRelayUIStyle.warning)
-                            .multilineTextAlignment(.center)
-                    }
                 }
                 .padding(AFKRelayUIStyle.screenPadding)
             }
             .scrollIndicators(.automatic)
             // Scoped before the toolbar joins so it cannot cascade over it.
             .accessibilityIdentifier("game-home")
+            // The disabled-launch reason reads above the bar it explains.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if let startBlockedReason {
+                    Label(startBlockedReason, systemImage: "shoeprints.fill")
+                        .font(.callout)
+                        .foregroundStyle(AFKRelayUIStyle.warning)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, AFKRelayUIStyle.screenPadding)
+                        .padding(.bottom, AFKRelayUIStyle.compactSpacing)
+                }
+            }
         }
         .foregroundStyle(.white)
         .toolbar(.hidden, for: .navigationBar)
-        // The native bottom bar is the screen's action row:
-        // Settings · Start Run · Leaderboard (coming later).
+        // The system bottom bar: icon pods flanking the labeled launch pod —
+        // (Settings) (       Start Run       ) (Trophy). Text-only buttons
+        // keep their words in a bar; icon+text labels collapse to the icon.
         .toolbar {
             ToolbarItemGroup(placement: .bottomBar) {
                 Button("Settings", systemImage: "gearshape", action: onShowSettings)
@@ -123,14 +127,21 @@ struct GameHomeView: View {
                 Spacer()
 
                 Button(action: onStartRun) {
-                    Label("Start Run", systemImage: "play.fill")
-                        .font(.headline)
-                        .padding(.horizontal, AFKRelayUIStyle.standardSpacing)
+                    // A plain HStack, not a Label: bars reformat Labels to
+                    // icon-only, so the pairing is hand-made — which means
+                    // padding and the accessibility label are ours to supply.
+                    HStack(spacing: 8) {
+                        Image(systemName: "play.fill")
+                        Text("Start Run!")
+                    }
+                    .font(.headline)
+                    .padding(.horizontal, AFKRelayUIStyle.standardSpacing)
                 }
-                .buttonStyle(.glassProminent)
-                .disabled(!canStartRun)
-                .accessibilityHint(startBlockedReason ?? "")
-                .accessibilityIdentifier("start-run")
+                    .buttonStyle(.glassProminent)
+                    .disabled(!canStartRun)
+                    .accessibilityLabel("Start Run")
+                    .accessibilityHint(startBlockedReason ?? "")
+                    .accessibilityIdentifier("start-run")
 
                 Spacer()
 
