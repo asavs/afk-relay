@@ -140,11 +140,6 @@ struct AppShellView: View {
             .accessibilityAddTraits(.allowsDirectInteraction)
             .accessibilityIdentifier("arena")
 
-            ArenaHUDView(
-                model: coordinator.hudModel,
-                onPause: coordinator.pauseRun
-            )
-
             if coordinator.diagnosticsOptions.isEnabled,
                coordinator.diagnosticsOptions.showsFrameMetrics
             {
@@ -171,7 +166,7 @@ struct AppShellView: View {
                 isRunActive: coordinator.screen == .running,
                 onIntentChanged: coordinator.setMovementIntent
             )
-            .padding(.bottom, AFKRelayUIStyle.compactSpacing)
+            .padding(.bottom, AFKRelayUIStyle.generousSpacing)
             .disabled(coordinator.screen != .running)
             .accessibilityHidden(coordinator.screen == .paused)
         }
@@ -186,7 +181,28 @@ struct AppShellView: View {
                 )
             }
         }
-        .toolbar(.hidden, for: .navigationBar)
+        // System toolbar items: iOS owns their size, position, and glass —
+        // the same metrics as every other app's floating controls.
+        .toolbar(
+            coordinator.screen == .paused ? .hidden : .visible,
+            for: .navigationBar
+        )
+        .toolbar {
+            // Principal placement owns the title's center width — the one
+            // toolbar slot wide enough for the full status readout.
+            ToolbarItem(placement: .principal) {
+                ArenaHUDStatusChip(model: coordinator.hudModel)
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(
+                    "Pause",
+                    systemImage: "pause.fill",
+                    action: coordinator.pauseRun
+                )
+                .accessibilityIdentifier("pause-run")
+            }
+        }
     }
 
     private var economyRecoveryView: some View {

@@ -4,7 +4,7 @@ import SwiftUI
 /// and an optional numeric readout. Purely presentational and token-styled
 /// so future resources (or future art) swap in without layout changes.
 struct HUDResourceBar: View {
-    @ScaledMetric(relativeTo: .caption) private var barWidth = 96.0
+    @ScaledMetric(relativeTo: .caption) private var barWidth = 56.0
 
     let systemImage: String
     let tint: Color

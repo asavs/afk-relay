@@ -1,66 +1,59 @@
 import SwiftUI
 
-/// One thin strip: elapsed time on the left; hearts, stamina, and the
-/// future mana reserve on the right; pause as the only control. The arena
-/// below it belongs to the game.
-struct ArenaHUDView: View {
+/// The arena's status readout, mounted as a system toolbar item so iOS
+/// owns its position, height, and Liquid Glass treatment. One line:
+/// hearts, elapsed time, and the stamina bar with its count.
+struct ArenaHUDStatusChip: View {
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let model: ArenaHUDModel
-    let onPause: @MainActor () -> Void
 
     var body: some View {
-        // A compact glass chip floats top-leading; pause floats trailing.
-        // Both are overlays on the arena, never part of the field.
-        HStack(alignment: .top) {
-            DiagnosticPanel(isOverlay: true) {
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: AFKRelayUIStyle.compactSpacing) {
-                        hearts
-                        elapsed
-                    }
+        content
+            .padding(.horizontal, AFKRelayUIStyle.standardSpacing)
+            .padding(.vertical, AFKRelayUIStyle.compactSpacing)
+            .modifier(ChipBackground(contrast: contrast))
+    }
 
-                    HUDResourceBar(
-                        systemImage: "shoeprints.fill",
-                        tint: AFKRelayUIStyle.player,
-                        fraction: model.staminaFraction,
-                        valueText: model.availableTokens
-                            .formatted(.number.grouping(.automatic)),
-                        accessibilityLabel: "Movement tokens",
-                        accessibilityValue: "\(model.availableTokens)"
-                    )
+    // Principal toolbar items receive no automatic glass pod; the chip
+    // supplies its own capsule to match the system's.
+    private var content: some View {
+        HStack(spacing: 6) {
+            hearts
+            elapsed
+            HUDResourceBar(
+                systemImage: "shoeprints.fill",
+                tint: AFKRelayUIStyle.player,
+                fraction: model.staminaFraction,
+                valueText: model.availableTokens
+                    .formatted(.number.grouping(.automatic)),
+                accessibilityLabel: "Movement tokens",
+                accessibilityValue: "\(model.availableTokens)"
+            )
 
-                    // Reserved seam for future meditation-powered spells;
-                    // hidden until that resource exists so the empty gauge
-                    // cannot confuse testers.
-                    // HUDResourceBar(
-                    //     systemImage: "sparkles",
-                    //     tint: AFKRelayUIStyle.mana,
-                    //     fraction: 0,
-                    //     accessibilityLabel: "Mana",
-                    //     accessibilityValue: "Not yet available"
-                    // )
-                }
-                .font(.footnote)
-            }
-
-            Spacer(minLength: AFKRelayUIStyle.compactSpacing)
-
-            pauseButton
+            // Reserved seam for future meditation-powered spells; hidden
+            // until that resource exists so an empty gauge cannot confuse
+            // testers.
+            // HUDResourceBar(
+            //     systemImage: "sparkles",
+            //     tint: AFKRelayUIStyle.mana,
+            //     fraction: 0,
+            //     accessibilityLabel: "Mana",
+            //     accessibilityValue: "Not yet available"
+            // )
         }
-        .padding(.horizontal, AFKRelayUIStyle.standardSpacing)
-        .padding(.vertical, AFKRelayUIStyle.compactSpacing)
+        .font(.footnote)
         .foregroundStyle(.white)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("arena-hud")
     }
 
     private var elapsed: some View {
-        Label(
+        Text(
             Duration.seconds(model.survivalDuration)
-                .formatted(.time(pattern: .minuteSecond)),
-            systemImage: "stopwatch"
+                .formatted(.time(pattern: .minuteSecond))
         )
         .monospacedDigit()
         .foregroundStyle(.secondary)
@@ -72,7 +65,7 @@ struct ArenaHUDView: View {
     }
 
     private var hearts: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 3) {
             if model.maximumPlayerHealth <= 5,
                !dynamicTypeSize.isAccessibilitySize
             {
@@ -101,29 +94,23 @@ struct ArenaHUDView: View {
         )
     }
 
-    private var pauseButton: some View {
-        // The frame lives inside the button so the whole area is tappable.
-        // Neutral tint: the player's cyan belongs to the player alone.
-        Button(action: onPause) {
-            Image(systemName: "pause.fill")
-                .frame(
-                    minWidth: AFKRelayUIStyle.minimumTapTarget,
-                    minHeight: AFKRelayUIStyle.minimumTapTarget
-                )
-                .contentShape(.rect)
-        }
-        .buttonStyle(.glass)
-        .buttonBorderShape(.circle)
-        .foregroundStyle(.white)
-        .accessibilityLabel("Pause")
-        .accessibilityIdentifier("pause-run")
-    }
-
     private func lifeSymbol(at index: Int) -> String {
         if index < model.playerHealth {
             "heart.fill"
         } else {
             differentiateWithoutColor ? "heart.slash" : "heart"
+        }
+    }
+}
+
+private struct ChipBackground: ViewModifier {
+    let contrast: ColorSchemeContrast
+
+    func body(content: Content) -> some View {
+        if contrast == .increased {
+            content.background(AFKRelayUIStyle.panel, in: .capsule)
+        } else {
+            content.glassEffect()
         }
     }
 }
