@@ -20,6 +20,7 @@ struct StepOnboardingView: View {
                             .font(.largeTitle)
                             .bold()
                             .multilineTextAlignment(.center)
+                            .accessibilityAddTraits(.isHeader)
 
                         Text("Every step you walk becomes one movement token. Spend tokens to survive the arena.")
                             .font(.body)
@@ -46,7 +47,12 @@ struct StepOnboardingView: View {
 
                     WalletRefreshStatusView(state: refreshState)
                         .frame(maxWidth: .infinity, alignment: .leading)
-
+                }
+                .padding(AFKRelayUIStyle.screenPadding)
+            }
+            .scrollIndicators(.automatic)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                PrimaryActionDock {
                     OnboardingActionsView(
                         refreshState: refreshState,
                         onConnectSteps: onConnectSteps,
@@ -54,13 +60,10 @@ struct StepOnboardingView: View {
                         onOpenSettings: onOpenSettings
                     )
                 }
-                .padding(AFKRelayUIStyle.screenPadding)
-                .frame(maxWidth: 560)
-                .frame(maxWidth: .infinity)
             }
-            .scrollIndicators(.hidden)
         }
         .foregroundStyle(.white)
+        .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier("step-onboarding")
     }
 }

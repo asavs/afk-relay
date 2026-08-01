@@ -1,33 +1,32 @@
 import SwiftUI
 
 struct ArenaHUDView: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
     let model: ArenaHUDModel
     let onPause: @MainActor () -> Void
 
     var body: some View {
-        Group {
-            if dynamicTypeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: AFKRelayUIStyle.compactSpacing) {
-                    bankAndTime
-                    HStack(alignment: .bottom) {
-                        health
-                        Spacer(minLength: 0)
-                        pauseButton
-                    }
+        // Size-driven, not category-driven: the stacked layout engages the
+        // moment the row stops fitting, which happens well before the
+        // accessibility type sizes.
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: AFKRelayUIStyle.compactSpacing) {
+                bankAndTime
+                Spacer(minLength: 0)
+                VStack(
+                    alignment: .trailing,
+                    spacing: AFKRelayUIStyle.compactSpacing
+                ) {
+                    health
+                    pauseButton
                 }
-            } else {
-                HStack(alignment: .top, spacing: AFKRelayUIStyle.compactSpacing) {
-                    bankAndTime
+            }
+
+            VStack(alignment: .leading, spacing: AFKRelayUIStyle.compactSpacing) {
+                bankAndTime
+                HStack(alignment: .bottom) {
+                    health
                     Spacer(minLength: 0)
-                    VStack(
-                        alignment: .trailing,
-                        spacing: AFKRelayUIStyle.compactSpacing
-                    ) {
-                        health
-                        pauseButton
-                    }
+                    pauseButton
                 }
             }
         }
@@ -41,12 +40,11 @@ struct ArenaHUDView: View {
         DiagnosticPanel {
             VStack(alignment: .leading, spacing: AFKRelayUIStyle.compactSpacing) {
                 Label(
-                    "\(model.availableTokens) tokens",
+                    "\(model.availableTokens.formatted(.number.grouping(.automatic))) tokens",
                     systemImage: "shoeprints.fill"
                 )
                 .bold()
                 .monospacedDigit()
-                .contentTransition(.numericText())
 
                 Label(
                     Duration.seconds(model.survivalDuration)
@@ -54,6 +52,11 @@ struct ArenaHUDView: View {
                     systemImage: "stopwatch"
                 )
                 .monospacedDigit()
+                .accessibilityLabel("Survived")
+                .accessibilityValue(
+                    Duration.seconds(model.survivalDuration)
+                        .formatted(.units(allowed: [.minutes, .seconds], width: .wide))
+                )
 
                 Label(
                     "\(model.tokensSpentThisRun) spent",
@@ -62,6 +65,8 @@ struct ArenaHUDView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
+                .accessibilityLabel("Tokens spent this run")
+                .accessibilityValue("\(model.tokensSpentThisRun)")
             }
         }
     }

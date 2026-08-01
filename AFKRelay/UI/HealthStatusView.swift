@@ -2,6 +2,8 @@ import SwiftUI
 
 struct HealthStatusView: View {
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .callout) private var gaugeWidth = 120.0
 
     let current: Int
     let maximum: Int
@@ -15,11 +17,13 @@ struct HealthStatusView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
 
-                // One glyph per point only at readable counts; a wide-open
-                // balance must degrade to a bounded gauge instead of laying
-                // out thousands of glyphs (and stretching the arena's Metal
-                // drawable past its maximum size).
-                if maximum <= Self.heartGlyphLimit {
+                // One glyph per point only at readable counts and sizes; a
+                // wide-open balance or accessibility text size degrades to a
+                // bounded gauge instead of laying out rows of glyphs (which
+                // can stretch the arena's Metal drawable past its maximum).
+                if maximum <= Self.heartGlyphLimit,
+                   !dynamicTypeSize.isAccessibilitySize
+                {
                     HStack(spacing: 5) {
                         ForEach(0..<maximum, id: \.self) { index in
                             Image(systemName: healthSymbol(at: index))
@@ -34,7 +38,7 @@ struct HealthStatusView: View {
                         total: Double(max(maximum, 1))
                     )
                     .tint(AFKRelayUIStyle.enemy)
-                    .frame(width: 120)
+                    .frame(width: gaugeWidth)
                 }
 
                 Text("\(current) of \(maximum)")

@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct MovementControlTray: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     let availableTokens: Int64
     let isRunActive: Bool
     let onIntentChanged: @MainActor (MovementIntent) -> Void
@@ -29,7 +31,17 @@ struct MovementControlTray: View {
         .padding(.horizontal, AFKRelayUIStyle.screenPadding)
         .padding(.vertical, AFKRelayUIStyle.compactSpacing)
         .frame(maxWidth: .infinity)
-        .background(.ultraThinMaterial)
+        // The background extends under the home indicator; only the
+        // content respects the safe area.
+        .background {
+            Rectangle()
+                .fill(
+                    reduceTransparency
+                        ? AnyShapeStyle(AFKRelayUIStyle.panel)
+                        : AnyShapeStyle(.ultraThinMaterial)
+                )
+                .ignoresSafeArea(edges: .bottom)
+        }
         .overlay(alignment: .top) {
             Divider()
         }

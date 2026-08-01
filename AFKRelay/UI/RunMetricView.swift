@@ -11,6 +11,8 @@ struct RunMetricView: View {
                 Label(title, systemImage: systemImage)
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
 
                 Text(value)
                     .font(.title2)

@@ -9,8 +9,8 @@ struct VirtualJoystickView: View {
     let disabledAccessibilityValue: String
     let onIntentChanged: @MainActor (MovementIntent) -> Void
 
-    private let diameter = 148.0
-    private let knobDiameter = 62.0
+    private let diameter = AFKRelayUIStyle.joystickDiameter
+    private let knobDiameter = AFKRelayUIStyle.joystickKnobDiameter
 
     var body: some View {
         ZStack {
@@ -24,7 +24,10 @@ struct VirtualJoystickView: View {
                     )
                 )
 
-            JoystickDirectionTicksView(isEnabled: isEnabled)
+            JoystickDirectionTicksView(
+                isEnabled: isEnabled,
+                span: diameter - knobDiameter / 2 - 5
+            )
 
             Circle()
                 .fill(isEnabled ? AFKRelayUIStyle.player : .secondary)
@@ -35,14 +38,17 @@ struct VirtualJoystickView: View {
         .frame(width: diameter, height: diameter)
         .contentShape(.circle)
         .gesture(dragGesture)
-        .opacity(isEnabled ? 1 : 0.62)
+        .opacity(isEnabled ? 1 : AFKRelayUIStyle.pauseDimOpacity)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Movement joystick")
         .accessibilityValue(
             isEnabled ? "Ready" : disabledAccessibilityValue
         )
-        .accessibilityHint("Drag in the direction you want to move.")
+        .accessibilityHint(
+            isEnabled ? "Drag in the direction you want to move." : ""
+        )
         .accessibilityAddTraits(isEnabled ? .allowsDirectInteraction : .isStaticText)
+        .accessibilityRespondsToUserInteraction(isEnabled)
         .onChange(of: isEnabled) { _, enabled in
             if !enabled {
                 resetIntent()

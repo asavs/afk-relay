@@ -121,6 +121,7 @@ struct AppShellView: View {
                 .controlSize(.large)
                 .foregroundStyle(.white)
         }
+        .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier("app-loading")
     }
 
@@ -131,7 +132,9 @@ struct AppShellView: View {
                 options: [.ignoresSiblingOrder]
             )
             .ignoresSafeArea(edges: .horizontal)
+            .accessibilityElement()
             .accessibilityLabel("Tactical survival arena")
+            .accessibilityAddTraits(.allowsDirectInteraction)
             .accessibilityIdentifier("arena")
 
             ArenaHUDView(
@@ -142,9 +145,15 @@ struct AppShellView: View {
             if coordinator.diagnosticsOptions.isEnabled,
                coordinator.diagnosticsOptions.showsFrameMetrics
             {
+                // Bottom-leading keeps the readout clear of both the HUD
+                // band above and the danger geometry mid-arena.
                 DiagnosticsOverlayView(model: coordinator.diagnosticsHUDModel)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                    .padding()
+                    .frame(
+                        maxWidth: .infinity,
+                        maxHeight: .infinity,
+                        alignment: .bottomLeading
+                    )
+                    .padding(AFKRelayUIStyle.standardSpacing)
                     .allowsHitTesting(false)
             }
 
@@ -185,6 +194,7 @@ struct AppShellView: View {
                     )
                     .font(.title2)
                     .bold()
+                    .accessibilityAddTraits(.isHeader)
 
                     Text(
                         "Your saved movement bank is damaged and can’t be opened. To keep playing, AFK Relay needs to start a new bank at zero tokens."
@@ -221,6 +231,7 @@ struct AppShellView: View {
             .padding(AFKRelayUIStyle.screenPadding)
         }
         .foregroundStyle(.white)
+        .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier("economy-recovery")
     }
 

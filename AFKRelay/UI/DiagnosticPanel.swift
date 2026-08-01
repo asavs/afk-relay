@@ -6,7 +6,7 @@ struct DiagnosticPanel<Content: View>: View {
 
     var body: some View {
         content
-            .padding()
+            .padding(AFKRelayUIStyle.standardSpacing)
             .background(
                 AFKRelayUIStyle.panel.opacity(contrast == .increased ? 1 : 0.92),
                 in: .rect(cornerRadius: AFKRelayUIStyle.panelCornerRadius)

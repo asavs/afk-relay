@@ -34,6 +34,16 @@ struct WalletRefreshStatusView: View {
             }
         }
         .accessibilityElement(children: .combine)
+        .onChange(of: state) { _, newState in
+            // Failure transitions are announced; sighted users see the
+            // color and copy change, VoiceOver users hear it.
+            switch newState {
+            case .noReadableStepData, .recoverableFailure, .persistenceBlocked:
+                AccessibilityNotification.Announcement(newState.title).post()
+            case .idle, .refreshing, .current:
+                break
+            }
+        }
     }
 
     private var statusStyle: Color {

@@ -21,6 +21,7 @@ struct RunSummaryView: View {
                         Text("Run Complete")
                             .font(.largeTitle)
                             .bold()
+                            .accessibilityAddTraits(.isHeader)
 
                         Text("Unspent tokens stay in your movement bank.")
                             .foregroundStyle(.secondary)
@@ -64,25 +65,26 @@ struct RunSummaryView: View {
                         }
                     }
 
-                    VStack(spacing: AFKRelayUIStyle.compactSpacing) {
-                        Button("Run Again", systemImage: "arrow.clockwise", action: onRunAgain)
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.large)
-                            .accessibilityIdentifier("run-again")
-
-                        Button("Return Home", systemImage: "house", action: onReturnHome)
-                            .buttonStyle(.bordered)
-                            .controlSize(.large)
-                            .accessibilityIdentifier("return-home")
-                    }
                 }
                 .padding(AFKRelayUIStyle.screenPadding)
-                .frame(maxWidth: 560)
-                .frame(maxWidth: .infinity)
             }
-            .scrollIndicators(.hidden)
+            .scrollIndicators(.automatic)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                PrimaryActionDock {
+                    Button("Run Again", systemImage: "arrow.clockwise", action: onRunAgain)
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .accessibilityIdentifier("run-again")
+
+                    Button("Return Home", systemImage: "house", action: onReturnHome)
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .accessibilityIdentifier("return-home")
+                }
+            }
         }
         .foregroundStyle(.white)
+        .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier("run-summary")
     }
 }

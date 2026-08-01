@@ -14,7 +14,6 @@ struct WalletBankView: View {
                     .font(.largeTitle)
                     .bold()
                     .monospacedDigit()
-                    .contentTransition(.numericText())
 
                 Text("tokens available")
                     .font(.callout)

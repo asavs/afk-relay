@@ -30,6 +30,9 @@ struct GameHomeView: View {
                             .font(.largeTitle)
                             .bold()
                             .tracking(2)
+                            .minimumScaleFactor(0.7)
+                            .accessibilityLabel("AFK Relay")
+                            .accessibilityAddTraits(.isHeader)
 
                         Text("Real movement. Tactical survival.")
                             .font(.headline)
@@ -58,14 +61,22 @@ struct GameHomeView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
-
+                }
+                .padding(AFKRelayUIStyle.screenPadding)
+            }
+            .scrollIndicators(.automatic)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                PrimaryActionDock {
                     // The reason a disabled control is disabled reads before
                     // the control, for sighted users and VoiceOver alike.
                     if let startBlockedReason {
-                        Label(startBlockedReason, systemImage: "shoeprints.fill")
-                            .font(.callout)
-                            .foregroundStyle(AFKRelayUIStyle.warning)
-                            .multilineTextAlignment(.center)
+                        VStack(spacing: 4) {
+                            Image(systemName: "shoeprints.fill")
+                            Text(startBlockedReason)
+                                .multilineTextAlignment(.center)
+                        }
+                        .font(.callout)
+                        .foregroundStyle(AFKRelayUIStyle.warning)
                     }
 
                     Button("Start Run", systemImage: "play.fill", action: onStartRun)
@@ -75,11 +86,7 @@ struct GameHomeView: View {
                         .accessibilityHint(startBlockedReason ?? "")
                         .accessibilityIdentifier("start-run")
                 }
-                .padding(AFKRelayUIStyle.screenPadding)
-                .frame(maxWidth: 560)
-                .frame(maxWidth: .infinity)
             }
-            .scrollIndicators(.hidden)
         }
         .foregroundStyle(.white)
         .toolbar {
