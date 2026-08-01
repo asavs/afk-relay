@@ -6,6 +6,10 @@
 	<string>AFK Relay</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>AFK Relay reads your step count from Apple Health so the steps you walk become movement in the game. Your step data is used only on this iPhone and is never uploaded.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>AFK Relay never writes to Apple Health. It only reads your step count, and nothing the game does changes your health data.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
