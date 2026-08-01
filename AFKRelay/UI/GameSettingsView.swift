@@ -3,29 +3,14 @@ import SwiftUI
 struct GameSettingsView: View {
     @Binding var diagnostics: DiagnosticsOptions
 
-    let isRunActive: Bool
     let refreshState: WalletRefreshPresentationState
     let onRefreshSteps: @MainActor () -> Void
     let onOpenSystemSettings: @MainActor () -> Void
-    let onResume: @MainActor () -> Void
-    let onEndRun: @MainActor () -> Void
+    let onDone: @MainActor () -> Void
 
     var body: some View {
         NavigationStack {
             Form {
-                if isRunActive {
-                    Section("Run") {
-                        Button("Resume", systemImage: "play.fill", action: onResume)
-                        Button(
-                            "End Run",
-                            systemImage: "stop.fill",
-                            role: .destructive,
-                            action: onEndRun
-                        )
-                        .accessibilityIdentifier("end-run")
-                    }
-                }
-
                 Section {
                     WalletRefreshStatusView(state: refreshState)
 
@@ -60,6 +45,11 @@ struct GameSettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done", action: onDone)
+                }
+            }
         }
         .accessibilityIdentifier("game-settings")
     }

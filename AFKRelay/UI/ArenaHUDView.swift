@@ -74,13 +74,19 @@ struct ArenaHUDView: View {
     }
 
     private var pauseButton: some View {
-        Button("Pause", systemImage: "pause.fill", action: onPause)
-            .labelStyle(.iconOnly)
-            .buttonStyle(.borderedProminent)
-            .frame(
-                minWidth: AFKRelayUIStyle.minimumTapTarget,
-                minHeight: AFKRelayUIStyle.minimumTapTarget
-            )
-            .accessibilityIdentifier("pause-run")
+        // The frame lives inside the button so the whole area is tappable;
+        // an outer frame would only add inert padding around the target.
+        Button(action: onPause) {
+            Image(systemName: "pause.fill")
+                .frame(
+                    minWidth: AFKRelayUIStyle.minimumTapTarget,
+                    minHeight: AFKRelayUIStyle.minimumTapTarget
+                )
+                .contentShape(.rect)
+        }
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.circle)
+        .accessibilityLabel("Pause")
+        .accessibilityIdentifier("pause-run")
     }
 }

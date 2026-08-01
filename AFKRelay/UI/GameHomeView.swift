@@ -8,6 +8,16 @@ struct GameHomeView: View {
     let onRefreshSteps: @MainActor () -> Void
     let onShowSettings: @MainActor () -> Void
 
+    private var startBlockedReason: String? {
+        if availableTokens == 0 {
+            "Walk to earn movement tokens before you start."
+        } else if !canStartRun {
+            "Resolve the save issue above before starting a run."
+        } else {
+            nil
+        }
+    }
+
     var body: some View {
         ZStack {
             DiagnosticBackdropView()
@@ -42,25 +52,28 @@ struct GameHomeView: View {
                                 systemImage: "arrow.clockwise",
                                 action: onRefreshSteps
                             )
+                            .buttonStyle(.bordered)
+                            .controlSize(.large)
                             .disabled(!refreshState.permitsManualRetry)
-                            .frame(minHeight: AFKRelayUIStyle.minimumTapTarget)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    // The reason a disabled control is disabled reads before
+                    // the control, for sighted users and VoiceOver alike.
+                    if let startBlockedReason {
+                        Label(startBlockedReason, systemImage: "shoeprints.fill")
+                            .font(.callout)
+                            .foregroundStyle(AFKRelayUIStyle.warning)
+                            .multilineTextAlignment(.center)
                     }
 
                     Button("Start Run", systemImage: "play.fill", action: onStartRun)
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
                         .disabled(!canStartRun)
-                        .frame(minHeight: AFKRelayUIStyle.minimumTapTarget)
+                        .accessibilityHint(startBlockedReason ?? "")
                         .accessibilityIdentifier("start-run")
-
-                    if availableTokens == 0 {
-                        Label("Walk to earn movement tokens before you start.", systemImage: "shoeprints.fill")
-                            .font(.callout)
-                            .foregroundStyle(AFKRelayUIStyle.warning)
-                            .multilineTextAlignment(.center)
-                    }
                 }
                 .padding(AFKRelayUIStyle.screenPadding)
                 .frame(maxWidth: 560)

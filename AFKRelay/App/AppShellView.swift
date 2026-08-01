@@ -32,19 +32,10 @@ struct AppShellView: View {
         .sheet(isPresented: $showsSettings) {
             GameSettingsView(
                 diagnostics: $coordinator.diagnosticsOptions,
-                isRunActive: coordinator.screen == .paused
-                    || coordinator.screen == .running,
                 refreshState: coordinator.refreshState,
                 onRefreshSteps: handleRetryOrRefresh,
                 onOpenSystemSettings: coordinator.openSystemSettings,
-                onResume: {
-                    showsSettings = false
-                    coordinator.resumeRun()
-                },
-                onEndRun: {
-                    showsSettings = false
-                    coordinator.endRun()
-                }
+                onDone: { showsSettings = false }
             )
         }
         .task {
@@ -157,12 +148,6 @@ struct AppShellView: View {
                     .allowsHitTesting(false)
             }
 
-            if coordinator.screen == .paused {
-                RunPauseOverlay(
-                    onResume: coordinator.resumeRun,
-                    onShowSettings: { showsSettings = true }
-                )
-            }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             MovementControlTray(
@@ -171,6 +156,18 @@ struct AppShellView: View {
                 onIntentChanged: coordinator.setMovementIntent
             )
             .disabled(coordinator.screen != .running)
+            .accessibilityHidden(coordinator.screen == .paused)
+        }
+        // The overlay sits above the tray inset so pausing dims the whole
+        // surface, joystick included.
+        .overlay {
+            if coordinator.screen == .paused {
+                RunPauseOverlay(
+                    onResume: coordinator.resumeRun,
+                    onEndRun: coordinator.endRun,
+                    onShowSettings: { showsSettings = true }
+                )
+            }
         }
         .toolbar(.hidden, for: .navigationBar)
     }

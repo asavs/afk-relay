@@ -72,6 +72,7 @@ struct RunSummaryView: View {
 
                         Button("Return Home", systemImage: "house", action: onReturnHome)
                             .buttonStyle(.bordered)
+                            .controlSize(.large)
                             .accessibilityIdentifier("return-home")
                     }
                 }

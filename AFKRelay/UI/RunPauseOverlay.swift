@@ -2,11 +2,12 @@ import SwiftUI
 
 struct RunPauseOverlay: View {
     let onResume: @MainActor () -> Void
+    let onEndRun: @MainActor () -> Void
     let onShowSettings: @MainActor () -> Void
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.62)
+            Color.black.opacity(AFKRelayUIStyle.pauseDimOpacity)
                 .ignoresSafeArea()
 
             DiagnosticPanel {
@@ -14,13 +15,25 @@ struct RunPauseOverlay: View {
                     Label("Run Paused", systemImage: "pause.circle.fill")
                         .font(.title)
                         .bold()
+                        .accessibilityAddTraits(.isHeader)
 
                     Button("Resume", systemImage: "play.fill", action: onResume)
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
 
+                    Button(
+                        "End Run",
+                        systemImage: "stop.fill",
+                        role: .destructive,
+                        action: onEndRun
+                    )
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .accessibilityIdentifier("end-run")
+
                     Button("Settings", systemImage: "gearshape", action: onShowSettings)
                         .buttonStyle(.bordered)
+                        .controlSize(.large)
                 }
             }
             .padding(AFKRelayUIStyle.screenPadding)

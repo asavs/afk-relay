@@ -8,15 +8,23 @@ struct OnboardingActionsView: View {
 
     var body: some View {
         VStack(spacing: AFKRelayUIStyle.compactSpacing) {
-            Button(
-                refreshState == .idle ? "Connect Steps" : "Try Again",
-                systemImage: refreshState == .idle ? "figure.walk" : "arrow.clockwise",
-                action: primaryAction
-            )
+            Button(action: primaryAction) {
+                if refreshState == .refreshing {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityLabel("Checking steps")
+                } else {
+                    Label(
+                        refreshState == .idle ? "Connect Steps" : "Try Again",
+                        systemImage: refreshState == .idle
+                            ? "figure.walk"
+                            : "arrow.clockwise"
+                    )
+                }
+            }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .disabled(refreshState == .refreshing)
-            .frame(minHeight: AFKRelayUIStyle.minimumTapTarget)
             .accessibilityIdentifier("connect-steps")
 
             if showsSettingsAction {
@@ -25,8 +33,8 @@ struct OnboardingActionsView: View {
                     systemImage: "arrow.up.forward.app",
                     action: onOpenSettings
                 )
-                    .buttonStyle(.bordered)
-                    .frame(minHeight: AFKRelayUIStyle.minimumTapTarget)
+                .buttonStyle(.bordered)
+                .controlSize(.large)
             }
         }
     }
