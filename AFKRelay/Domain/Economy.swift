@@ -8,7 +8,28 @@ nonisolated struct StepTotal: Equatable, Sendable {
         self.observedAt = observedAt
     }
 }
-nonisolated protocol StepTotalReading: Sendable { func requestAccess() async throws; func cumulativeSteps(in interval: DateInterval) async throws -> StepTotal }
+nonisolated protocol StepTotalReading: Sendable {
+    func requestAccess() async throws
+    func cumulativeSteps(in interval: DateInterval) async throws -> StepTotal
+    /// The reader's own daily average over the interval, bucketed by the
+    /// given calendar's days. Presentation-only context — never a minting
+    /// input.
+    func averageDailySteps(
+        over interval: DateInterval,
+        calendar: Calendar
+    ) async throws -> Int64
+}
+
+extension StepTotalReading {
+    /// Readers without historical statistics report no average; gauges
+    /// fall back to their no-baseline presentation.
+    func averageDailySteps(
+        over interval: DateInterval,
+        calendar: Calendar
+    ) async throws -> Int64 {
+        0
+    }
+}
 
 nonisolated struct EconomyState: Codable, Equatable, Sendable {
     static let currentSchemaVersion = 2

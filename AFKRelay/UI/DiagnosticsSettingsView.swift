@@ -21,7 +21,7 @@ struct DiagnosticsSettingsView: View {
         } header: {
             Text("Developer")
         } footer: {
-            Text("Shows what the game is doing under the hood. It never changes gameplay or your movement bank.")
+            Text("Shows what the game is doing under the hood. It never changes gameplay or your step bank.")
         }
     }
 }

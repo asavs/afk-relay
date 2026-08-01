@@ -16,7 +16,7 @@ struct WalletBankView: View {
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
 
-                Text("tokens available")
+                Text("steps banked")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -24,7 +24,7 @@ struct WalletBankView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Movement Bank")
-        .accessibilityValue("\(availableTokens.formatted(.number.grouping(.automatic))) tokens available")
+        .accessibilityValue("\(availableTokens.formatted(.number.grouping(.automatic))) steps banked")
         .accessibilityIdentifier("movement-bank")
     }
 }

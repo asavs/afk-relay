@@ -35,7 +35,7 @@ struct GameSettingsView: View {
                 DiagnosticsSettingsView(options: $diagnostics)
 
                 Section {
-                    LabeledContent("Movement", value: "1 step = 1 token")
+                    LabeledContent("Movement", value: "1 step walked = 1 step of movement")
                     LabeledContent("Your data", value: "Stays on this iPhone")
                 } header: {
                     Text("About This Build")

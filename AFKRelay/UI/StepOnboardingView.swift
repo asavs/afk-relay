@@ -22,7 +22,7 @@ struct StepOnboardingView: View {
                             .multilineTextAlignment(.center)
                             .accessibilityAddTraits(.isHeader)
 
-                        Text("Every step you walk becomes one movement token. Spend tokens to survive the arena.")
+                        Text("Every step you walk is banked. Spend steps to survive the arena.")
                             .font(.body)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -35,10 +35,10 @@ struct StepOnboardingView: View {
 
                     DiagnosticPanel {
                         VStack(alignment: .leading, spacing: AFKRelayUIStyle.standardSpacing) {
-                            Label("1 step = 1 movement token", systemImage: "arrow.left.arrow.right.circle.fill")
+                            Label("1 step walked = 1 step of movement", systemImage: "arrow.left.arrow.right.circle.fill")
                                 .font(.headline)
 
-                            Label("Your movement tokens stay on this iPhone", systemImage: "iphone")
+                            Label("Your banked steps stay on this iPhone", systemImage: "iphone")
 
                             Label("AFK Relay reads your step count and nothing else", systemImage: "lock.shield.fill")
                         }

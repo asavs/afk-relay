@@ -39,7 +39,7 @@ nonisolated final class AFKRelayUITests: XCTestCase {
         tap(app, button: "connect-steps", toReveal: "game-home")
         let bank = element(app, "movement-bank")
         XCTAssertTrue(bank.waitForExistence(timeout: 5))
-        XCTAssertEqual(bank.value as? String, "1,000 tokens available")
+        XCTAssertEqual(bank.value as? String, "1,000 steps banked")
 
         // Movement spends from the bank. A drag delivers a continuous
         // event stream; a stationary synthesized press is a single
@@ -79,9 +79,9 @@ nonisolated final class AFKRelayUITests: XCTestCase {
         // The wallet survives death and reflects only real spending.
         tap(app, button: "return-home", toReveal: "game-home")
         let remaining = bank.value as? String ?? ""
-        XCTAssertNotEqual(remaining, "1,000 tokens available")
+        XCTAssertNotEqual(remaining, "1,000 steps banked")
         XCTAssertTrue(
-            remaining.wholeMatch(of: #/[\d,]+ tokens available/#) != nil,
+            remaining.wholeMatch(of: #/[\d,]+ steps banked/#) != nil,
             "Unexpected bank value: \(remaining)"
         )
     }
@@ -136,7 +136,7 @@ nonisolated final class AFKRelayUITests: XCTestCase {
             XCTAssertTrue(bank.waitForExistence(timeout: 5))
             let value = bank.value as? String ?? ""
             XCTAssertTrue(
-                value.wholeMatch(of: #/[\d,]+ tokens available/#) != nil,
+                value.wholeMatch(of: #/[\d,]+ steps banked/#) != nil,
                 "Unexpected bank value: \(value)"
             )
         } else {

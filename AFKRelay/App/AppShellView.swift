@@ -20,15 +20,40 @@ struct AppShellView: View {
     var body: some View {
         @Bindable var coordinator = coordinator
 
-        NavigationStack {
-            content
+        // The root proxy sits outside the navigation stack, so its top
+        // inset is the device's honest status band — nav bars and hidden
+        // status bars never distort it.
+        GeometryReader { rootProxy in
+            NavigationStack {
+                content
+            }
+            // The counterfeit status bar: game surfaces hide the real one,
+            // so the HUD wears its band, sized to the top inset so items
+            // sit level with the sensor housing the way the system's own
+            // do. In a run the slots carry run state; on menu surfaces the
+            // clock is the actual time and the battery is the bank.
+            .overlay(alignment: .top) {
+                if let statusBarContext {
+                    VStack(spacing: 0) {
+                        ArenaStatusBarHUD(
+                            context: statusBarContext,
+                            topInset: rootProxy.safeAreaInsets.top,
+                            onPause: coordinator.screen == .running
+                                ? coordinator.pauseRun
+                                : nil
+                        )
+                        .frame(height: max(rootProxy.safeAreaInsets.top, 24))
+                        Spacer(minLength: 0)
+                            .allowsHitTesting(false)
+                    }
+                    .ignoresSafeArea(edges: .top)
+                }
+            }
         }
         .preferredColorScheme(.dark)
-        // Immersive chrome removal is arena-only; every other surface keeps
-        // the system status bar.
-        .statusBarHidden(
-            coordinator.screen == .running || coordinator.screen == .paused
-        )
+        // Game surfaces own their chrome; pre-game surfaces (loading,
+        // onboarding, recovery) keep the system status bar.
+        .statusBarHidden(statusBarContext != nil)
         .sheet(isPresented: $showsSettings) {
             GameSettingsView(
                 diagnostics: $coordinator.diagnosticsOptions,
@@ -72,6 +97,20 @@ struct AppShellView: View {
             Button("OK") {}
         } message: {
             Text(coordinator.progressMessage ?? "")
+        }
+    }
+
+    private var statusBarContext: ArenaStatusBarHUD.Context? {
+        switch coordinator.screen {
+        case .running, .paused:
+            .run(coordinator.hudModel)
+        case .home, .runSummary:
+            .home(
+                availableTokens: coordinator.availableTokens,
+                dailyAverageSteps: coordinator.averageDailySteps
+            )
+        case .loading, .onboarding, .economyRecovery:
+            nil
         }
     }
 
@@ -120,7 +159,7 @@ struct AppShellView: View {
         ZStack {
             DiagnosticBackdropView()
                 .ignoresSafeArea()
-            ProgressView("Loading your movement bank…")
+            ProgressView("Loading your step bank…")
                 .controlSize(.large)
                 .foregroundStyle(.white)
         }
@@ -181,28 +220,9 @@ struct AppShellView: View {
                 )
             }
         }
-        // System toolbar items: iOS owns their size, position, and glass —
-        // the same metrics as every other app's floating controls.
-        .toolbar(
-            coordinator.screen == .paused ? .hidden : .visible,
-            for: .navigationBar
-        )
-        .toolbar {
-            // Principal placement owns the title's center width — the one
-            // toolbar slot wide enough for the full status readout.
-            ToolbarItem(placement: .principal) {
-                ArenaHUDStatusChip(model: coordinator.hudModel)
-            }
-
-            ToolbarItem(placement: .topBarTrailing) {
-                Button(
-                    "Pause",
-                    systemImage: "pause.fill",
-                    action: coordinator.pauseRun
-                )
-                .accessibilityIdentifier("pause-run")
-            }
-        }
+        // Pause lives in the status band beside the clock; the arena
+        // needs no navigation bar at all.
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     private var economyRecoveryView: some View {
@@ -221,11 +241,11 @@ struct AppShellView: View {
                     .accessibilityAddTraits(.isHeader)
 
                     Text(
-                        "Your saved movement bank is damaged and can’t be opened. To keep playing, AFK Relay needs to start a new bank at zero tokens."
+                        "Your saved step bank is damaged and can’t be opened. To keep playing, AFK Relay needs to start a new bank at zero steps."
                     )
 
                     Text(
-                        "This can’t restore your previous tokens. Your Apple Health data is not changed."
+                        "This can’t restore your previous steps. Your Apple Health data is not changed."
                     )
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -239,7 +259,7 @@ struct AppShellView: View {
                     .buttonStyle(.glassProminent)
                     .controlSize(.large)
                     .confirmationDialog(
-                        "Reset the movement bank?",
+                        "Reset the step bank?",
                         isPresented: $showsResetConfirmation,
                         titleVisibility: .visible
                     ) {
@@ -248,7 +268,7 @@ struct AppShellView: View {
                         }
                         Button("Cancel", role: .cancel) {}
                     } message: {
-                        Text("This starts a new bank at zero tokens and can’t restore the previous one.")
+                        Text("This starts a new bank at zero steps and can’t restore the previous one.")
                     }
                 }
             }

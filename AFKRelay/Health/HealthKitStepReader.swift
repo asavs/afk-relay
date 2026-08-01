@@ -76,4 +76,48 @@ final class HealthKitStepReader: StepTotalReading {
             observedAt: await now()
         )
     }
+
+    func averageDailySteps(
+        over interval: DateInterval,
+        calendar: Calendar
+    ) async throws -> Int64 {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            throw HealthKitStepReaderError.healthDataUnavailable
+        }
+        guard interval.duration > 0 else {
+            throw HealthKitStepReaderError.invalidAggregate
+        }
+        guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount) else {
+            throw HealthKitStepReaderError.stepTypeUnavailable
+        }
+
+        let samplePredicate = HKQuery.predicateForSamples(
+            withStart: interval.start,
+            end: interval.end,
+            options: [.strictStartDate]
+        )
+        let descriptor = HKStatisticsCollectionQueryDescriptor(
+            predicate: .quantitySample(type: stepType, predicate: samplePredicate),
+            options: [.cumulativeSum],
+            anchorDate: calendar.startOfDay(for: interval.start),
+            intervalComponents: DateComponents(day: 1)
+        )
+        let collection = try await descriptor.result(for: healthStore)
+
+        // Empty days count as zero, matching how Health's own charts
+        // average a period.
+        var dayCount = 0
+        var total = 0.0
+        collection.enumerateStatistics(from: interval.start, to: interval.end) { statistics, _ in
+            dayCount += 1
+            total += statistics.sumQuantity()?.doubleValue(for: .count()) ?? 0
+        }
+
+        guard dayCount > 0, total.isFinite, total >= 0,
+              total <= Double(Int64.max)
+        else {
+            return 0
+        }
+        return Int64((total / Double(dayCount)).rounded(.down))
+    }
 }

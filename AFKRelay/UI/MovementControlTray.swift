@@ -28,7 +28,7 @@ struct MovementControlTray: View {
             VirtualJoystickView(
                 isEnabled: availableTokens > 0 && isRunActive,
                 disabledAccessibilityValue: isRunActive
-                    ? "Out of movement tokens — walk to earn more"
+                    ? "Out of steps — walk to bank more"
                     : "Run paused",
                 onIntentChanged: onIntentChanged
             )
@@ -39,7 +39,7 @@ struct MovementControlTray: View {
     // warns about an empty bank.
     private var statusText: String? {
         if isRunActive, availableTokens == 0 {
-            "Out of tokens — walk to earn more"
+            "Out of steps — walk to bank more"
         } else {
             nil
         }

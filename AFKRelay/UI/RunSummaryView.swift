@@ -20,7 +20,7 @@ struct RunSummaryView: View {
                             .bold()
                             .accessibilityAddTraits(.isHeader)
 
-                        Text("Unspent tokens stay in your movement bank.")
+                        Text("Unspent steps stay in your bank.")
                             .foregroundStyle(.secondary)
                     }
 

@@ -13,7 +13,7 @@ struct GameHomeView: View {
 
     private var startBlockedReason: String? {
         if availableTokens == 0 {
-            "Walk to earn movement tokens before you start."
+            "Walk to bank steps before you start."
         } else if !canStartRun {
             "Resolve the save issue above before starting a run."
         } else {

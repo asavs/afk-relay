@@ -52,7 +52,7 @@ struct RunMetricsGrid: View {
 
     private var spent: some View {
         RunMetricView(
-            title: "Tokens spent",
+            title: "Steps spent",
             value: model.tokensSpent.formatted(),
             systemImage: "shoeprints.fill"
         )

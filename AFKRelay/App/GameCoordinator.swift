@@ -39,6 +39,9 @@ final class GameCoordinator {
     private(set) var tokensSpentThisRun: Int64 = 0
     private(set) var friendlyFireDefeatsThisRun = 0
     private(set) var refreshState = WalletRefreshPresentationState.idle
+    /// HealthKit's own trailing 30-day daily average; presentation-only
+    /// context for the bank gauge, never a minting input.
+    private(set) var averageDailySteps: Int64 = 0
     private(set) var runSummary: RunSummaryModel?
     private(set) var progressMessage: String?
     var diagnosticsOptions = DiagnosticsOptions.disabled {
@@ -281,6 +284,27 @@ final class GameCoordinator {
         {
             publishEconomy()
             refreshSteps(requestAccess: false)
+            refreshDailyAverage()
+        }
+    }
+
+    /// Best-effort and silent: the gauge simply keeps its last baseline
+    /// (or shows none) when the statistics read fails.
+    private func refreshDailyAverage() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let now = composition.now()
+            guard let start = composition.calendar.date(
+                byAdding: .day,
+                value: -30,
+                to: now
+            ) else { return }
+            if let average = try? await composition.stepReader.averageDailySteps(
+                over: DateInterval(start: start, end: now),
+                calendar: composition.calendar
+            ) {
+                averageDailySteps = average
+            }
         }
     }
 
@@ -363,6 +387,7 @@ final class GameCoordinator {
             if ledger.state.hasReadableStepData {
                 screen = .home
                 refreshSteps(requestAccess: false)
+                refreshDailyAverage()
             } else {
                 screen = .onboarding
                 refreshState = .idle
@@ -370,7 +395,7 @@ final class GameCoordinator {
         } catch {
             screen = .economyRecovery
             refreshState = .persistenceBlocked(
-                message: "Your saved movement bank couldn’t be opened."
+                message: "Your saved step bank couldn’t be opened."
             )
         }
     }
@@ -440,7 +465,7 @@ final class GameCoordinator {
                 try await ledger.retryPersistence()
             } catch {
                 refreshState = .persistenceBlocked(
-                    message: "Your movement bank couldn’t be saved. Try again before starting a run."
+                    message: "Your step bank couldn’t be saved. Try again before starting a run."
                 )
                 return
             }
@@ -451,6 +476,7 @@ final class GameCoordinator {
         )
         if outcome == .current, ledger.state.hasReadableStepData {
             screen = .home
+            refreshDailyAverage()
         } else if createdLedgerForAttempt, !ledger.persistenceFailure {
             // A genuine first connection is the first validated aggregate, not
             // merely a button tap. An unreadable/interrupted attempt must not
@@ -674,7 +700,7 @@ final class GameCoordinator {
             screen = .paused
         }
         refreshState = .persistenceBlocked(
-            message: "Your movement bank couldn’t be saved, so the run is paused. Try again to keep playing."
+            message: "Your step bank couldn’t be saved, so the run is paused. Try again to keep playing."
         )
     }
 }
