@@ -6,9 +6,9 @@ import Testing
 struct EconomyDomainTests {
     @Test(arguments: [Int64(0), 1, 42, 9_999])
     func balanceAndExactCredit(steps: Int64) {
-        let balance = MVPBalance.v1
-        #expect(balance.arenaSize == .init(x: 1000, y: 1500))
-        #expect(balance.playerRadius == 30)
+        let balance = MVPBalance.v2
+        #expect(balance.arenaSize == .init(x: 800, y: 1200))
+        #expect(balance.playerRadius == 36)
         #expect(balance.playerSpeed == 240)
         #expect(balance.playerHitPoints == 3)
         #expect(balance.movementDistancePerToken == 43.2)
@@ -46,7 +46,7 @@ struct EconomyDomainTests {
 
     @Test("Five thousand tokens fund exactly fifteen minutes at full speed")
     func lockedMovementExchange() {
-        let balance = MVPBalance.v1
+        let balance = MVPBalance.v2
         let seconds = Double(5_000) * balance.movementDistancePerToken
             / balance.playerSpeed
         let burnRate = balance.playerSpeed

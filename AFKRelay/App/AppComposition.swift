@@ -10,7 +10,7 @@ struct AppComposition {
     let presentationCatalog: any ArenaPresentationCatalog
     let calendar: Calendar
     let now: @MainActor @Sendable () -> Date
-    var balance: MVPBalance = .v1
+    var balance: MVPBalance = .v2
     var initialDiagnosticsOptions: DiagnosticsOptions = .disabled
 
     static func current() -> AppComposition {
@@ -110,12 +110,12 @@ struct AppComposition {
         )
     }
 
-    /// `MVPBalance.v1` with pressure reached quickly and a player durable
+    /// `MVPBalance.v2` with pressure reached quickly and a player durable
     /// enough to keep the swarm rendering for the whole measurement window.
     /// This is a measurement harness, not a gameplay configuration.
     private static let perfArenaBalance = MVPBalance(
-        arenaSize: .init(x: 1000, y: 1500),
-        playerRadius: 30,
+        arenaSize: .init(x: 800, y: 1200),
+        playerRadius: 36,
         playerSpeed: 240,
         playerHitPoints: 2_000,
         movementDistancePerToken: 43.2,

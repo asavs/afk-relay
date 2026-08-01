@@ -94,7 +94,7 @@ struct SweptCircleSolverTests {
         #expect(
             abs(
                 arena.lastPlayerTravelDistance
-                    - MVPBalance.v1.playerSpeed * ArenaSimulation.fixedTimeStep
+                    - MVPBalance.v2.playerSpeed * ArenaSimulation.fixedTimeStep
             ) < 0.000_001
         )
     }

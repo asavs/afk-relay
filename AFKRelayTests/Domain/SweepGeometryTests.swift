@@ -6,7 +6,7 @@ import Testing
 struct SweepGeometryTests {
     @Test("Phase boundaries are exact")
     func phaseBoundaries() {
-        let balance = MVPBalance.v1
+        let balance = MVPBalance.v2
 
         #expect(SweepGeometry.phase(at: 0) == .telegraph(progress: 0))
         #expect(
@@ -29,7 +29,7 @@ struct SweepGeometryTests {
 
     @Test("Twenty-eight degree blade traverses the full 120 degree telegraph")
     func bladeTraversal() {
-        let balance = MVPBalance.v1
+        let balance = MVPBalance.v2
         let facing = Vector2(x: 1, y: 0)
         let first = SweepGeometry.activeBladeAngles(
             facing: facing,
@@ -49,7 +49,7 @@ struct SweepGeometryTests {
 
     @Test("Angle wrapping and target radius use filled-sector geometry")
     func wrappingAndEdges() {
-        let balance = MVPBalance.v1
+        let balance = MVPBalance.v2
         let middleOfActive = balance.sweepTelegraphDuration
             + balance.sweepActiveDuration / 2
         let wrappedTarget = Vector2(
@@ -96,8 +96,8 @@ struct SweepGeometryTests {
             x: cos(angle) * 210,
             y: sin(angle) * 210
         )
-        let middleOfActive = MVPBalance.v1.sweepTelegraphDuration
-            + MVPBalance.v1.sweepActiveDuration / 2
+        let middleOfActive = MVPBalance.v2.sweepTelegraphDuration
+            + MVPBalance.v2.sweepActiveDuration / 2
 
         #expect(
             !SweepGeometry.contains(
@@ -106,14 +106,14 @@ struct SweepGeometryTests {
                 sourceCenter: .zero,
                 facing: Vector2(x: 1, y: 0),
                 age: middleOfActive,
-                balance: .v1
+                balance: .v2
             )
         )
     }
 
     @Test("The final advertised blade endpoint is included in swept evaluation")
     func finalSweptEndpoint() {
-        let balance = MVPBalance.v1
+        let balance = MVPBalance.v2
         let activeEnd = balance.sweepTelegraphDuration
             + balance.sweepActiveDuration
         let targetAngle = 59.0 * Double.pi / 180
@@ -137,7 +137,7 @@ struct SweepGeometryTests {
 
     @Test("Resolver is source-immune, ordered, multi-target, and one-hit")
     func targetResolution() {
-        let balance = MVPBalance.v1
+        let balance = MVPBalance.v2
         let age = balance.sweepTelegraphDuration
             + balance.sweepActiveDuration / 2
         let source = entity(id: 9, position: .zero)
@@ -176,11 +176,11 @@ struct SweepGeometryTests {
             velocity: .zero,
             facing: Vector2(x: 1, y: 0),
             radius: isPlayer
-                ? MVPBalance.v1.playerRadius
-                : MVPBalance.v1.enemyRadius,
+                ? MVPBalance.v2.playerRadius
+                : MVPBalance.v2.enemyRadius,
             hitPoints: isPlayer
-                ? MVPBalance.v1.playerHitPoints
-                : MVPBalance.v1.enemyHitPoints,
+                ? MVPBalance.v2.playerHitPoints
+                : MVPBalance.v2.enemyHitPoints,
             isPlayer: isPlayer
         )
     }
