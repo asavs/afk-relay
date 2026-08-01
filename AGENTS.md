@@ -57,6 +57,56 @@ GitHub Wiki before making behavior or architecture changes.
   [`../wiki/implementation-status.md`](../wiki/implementation-status.md) only
   after linked code and verification evidence exist.
 
+## Verification
+
+- Run `xcodebuild -testPlan AFKRelay-Full` on a simulator before committing.
+  Architecture tests only run where the build host's source tree is reachable.
+- Run `xcodebuild -testPlan AFKRelay-Device` on the physical device before
+  calling a change verified. The device must be unlocked, and its developer
+  certificate occasionally needs re-trusting after a re-sign.
+- A green simulator run is not device evidence, and neither is evidence of a
+  visual change. Changes to appearance need screenshots and the owner's
+  approval before they are committed.
+
+## Shipping
+
+- Releases are tagged as bare version numbers — `0.1.0`, never `v0.1.0`.
+- Cut a release at a boundary the history already has. Fixes accumulate into a
+  patch release; the first `feat:` after the previous tag begins the next minor
+  release. Do not invent a boundary mid-era.
+- A release exists in four places, and all four must agree: the annotated tag,
+  the GitHub release, a row in the wiki's release ledger, and
+  `MARKETING_VERSION` in the Xcode project.
+- Run `./scripts/check-release-sync.sh` before and after cutting a release. It
+  reports drift across all four and exits non-zero on any.
+- Build and upload with `./scripts/release.sh <tag> <build-number>`. It builds
+  the tag from a scratch worktree, so the archive matches the tag rather than
+  the working tree.
+- Record the ledger row after the release is cut, never before. A decision may
+  be accepted, implemented, demonstrated, and reverted inside one release —
+  `ADR-0017` was — so a forward-looking claim about where work will ship is a
+  claim that can become false.
+
+### Apple constraints that are not obvious
+
+- Any build carrying the `com.apple.developer.healthkit` entitlement must
+  declare `NSHealthUpdateUsageDescription`, even though this app only reads.
+  The entitlement is binary and has no read-only variant, so Apple gates on
+  capability rather than use. Without it every upload fails validation with
+  error `90683`.
+- `ITSAppUsesNonExemptEncryption` is declared `false` so no upload stops to ask
+  about export compliance. The app has no networking and no custom cryptography.
+- Distribution requires an App Store Connect **API key**, not an Apple ID
+  app-specific password. A password authenticates the upload but cannot mint a
+  distribution certificate, and this machine holds only a development identity
+  — so a password alone fails at signing, before it reaches the upload.
+- Internal TestFlight needs no review and is immediate. External testing — the
+  only route to a public link — requires Beta App Review, roughly 24–48 hours
+  on a first submission; later builds usually skip it.
+- App Store Connect accepts a marketing version of literal `0`.
+- The GitHub wiki's `.wiki.git` remote does not exist until one page has been
+  created through the web UI.
+
 ## Precedence
 
 When documents conflict, use this order:
