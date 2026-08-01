@@ -79,7 +79,7 @@ actor FileLedgerRepository: LedgerRepository {
             && state.lifetimeTokensSpent <= state.lifetimeStepsCredited
             && state.movementRemainder.isFinite
             && state.movementRemainder >= 0
-            && state.movementRemainder < MVPBalance.v2.movementDistancePerToken
+            && state.movementRemainder < MVPBalance.v3.movementDistancePerToken
             && (
                 state.lifetimeTokensSpent < state.lifetimeStepsCredited
                     || state.movementRemainder == 0

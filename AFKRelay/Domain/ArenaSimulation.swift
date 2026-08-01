@@ -4,7 +4,7 @@ nonisolated enum ArenaTutorialStage: String, Codable, Equatable, Sendable { case
 nonisolated enum EndlessPressurePolicy {
     static func spawnInterval(
         at endlessElapsed: Double,
-        balance: MVPBalance = .v2
+        balance: MVPBalance = .v3
     ) -> Double {
         max(
             balance.spawnMinimumInterval,
@@ -21,7 +21,7 @@ nonisolated struct EndlessSpawnScheduler: Equatable, Sendable {
     mutating func advance(
         duration: Double,
         livingEnemyCount: Int,
-        balance: MVPBalance = .v2
+        balance: MVPBalance = .v3
     ) -> Bool {
         let safeDuration = max(0, duration)
         elapsed += safeDuration
@@ -92,14 +92,14 @@ nonisolated struct ArenaAttack: Equatable, Sendable {
     var playerTravelDistance: Double
     var hitIDs: Set<Int>
 
-    func isActive(balance: MVPBalance = .v2) -> Bool {
+    func isActive(balance: MVPBalance = .v3) -> Bool {
         if case .active = SweepGeometry.phase(at: age, balance: balance) {
             return true
         }
         return false
     }
 
-    func isFinished(balance: MVPBalance = .v2) -> Bool {
+    func isFinished(balance: MVPBalance = .v3) -> Bool {
         SweepGeometry.phase(at: age, balance: balance) == .finished
     }
 }
@@ -120,7 +120,7 @@ nonisolated enum ArenaAttackResolver {
         source: ArenaEntity,
         targets: [ArenaEntity],
         fromAge: Double? = nil,
-        balance: MVPBalance = .v2
+        balance: MVPBalance = .v3
     ) -> [Int] {
         targets
             .filter { target in
@@ -162,7 +162,7 @@ nonisolated struct ArenaSimulation: Sendable {
     let balance: MVPBalance; let bounds: ArenaBounds
     private(set) var player: ArenaEntity; private(set) var enemies: [ArenaEntity] = []; private(set) var attacks: [ArenaAttack] = []; private(set) var elapsed = 0.0; private(set) var tutorialStage: ArenaTutorialStage = .moveAndEvade; private(set) var result: ArenaRunResult?
     private var spawnScheduler = EndlessSpawnScheduler(); private var nextID = 1; private var kills = 0; private var friendlyFireKills = 0; private var movedDistance = 0.0; private var evadedTelegraph = false; private(set) var tokensSpent: Int64 = 0; private(set) var lastPlayerTravelDistance = 0.0; private(set) var lastPlayerCollisionNormals: [Vector2] = []
-    init(balance: MVPBalance = .v2, tutorialCompleted: Bool = false) {
+    init(balance: MVPBalance = .v3, tutorialCompleted: Bool = false) {
         self.balance = balance
         bounds = .init(maxX: balance.arenaSize.x, maxY: balance.arenaSize.y)
         tutorialStage = tutorialCompleted ? .endless : .moveAndEvade

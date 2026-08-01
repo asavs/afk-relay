@@ -61,8 +61,8 @@ struct ArenaSimulationTests {
     func bounds() {
         var arena = ArenaSimulation()
         for _ in 0..<500 { _ = arena.step(input: .init(x: -1, y: -1)) }
-        #expect(arena.player.position.x >= MVPBalance.v2.playerRadius)
-        #expect(arena.player.position.y >= MVPBalance.v2.playerRadius)
+        #expect(arena.player.position.x >= MVPBalance.v3.playerRadius)
+        #expect(arena.player.position.y >= MVPBalance.v3.playerRadius)
     }
 
     @Test("New attacks expose a full telegraph beginning at age zero")
@@ -108,7 +108,7 @@ struct ArenaSimulationTests {
 
     @Test("Endless pressure ramps from four to one-and-a-half seconds")
     func spawnRamp() {
-        let balance = MVPBalance.v2
+        let balance = MVPBalance.v3
         #expect(
             EndlessPressurePolicy.spawnInterval(
                 at: 0,
@@ -137,7 +137,7 @@ struct ArenaSimulationTests {
 
     @Test("Enemy cap retains at most one pending spawn interval")
     func spawnCapDiscardsBacklog() {
-        let balance = MVPBalance.v2
+        let balance = MVPBalance.v3
         var scheduler = EndlessSpawnScheduler()
 
         for _ in 0..<(60 * 30) {
@@ -329,7 +329,7 @@ struct ArenaSimulationTests {
         arena.reset(tutorialCompleted: false)
         #expect(arena.tutorialStage == .moveAndEvade)
         #expect(arena.enemies.count == 1)
-        #expect(arena.player.hitPoints == MVPBalance.v2.playerHitPoints)
+        #expect(arena.player.hitPoints == MVPBalance.v3.playerHitPoints)
     }
 
     @Test("Authoritative run result includes movement spent on the lethal tick")
