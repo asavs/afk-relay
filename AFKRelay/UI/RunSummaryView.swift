@@ -69,6 +69,8 @@ struct RunSummaryView: View {
                 .padding(AFKRelayUIStyle.screenPadding)
             }
             .scrollIndicators(.automatic)
+            // Scoped before the inset so it cannot cascade over the dock.
+            .accessibilityIdentifier("run-summary")
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 PrimaryActionDock {
                     Button("Run Again", systemImage: "arrow.clockwise", action: onRunAgain)
@@ -85,6 +87,5 @@ struct RunSummaryView: View {
         }
         .foregroundStyle(.white)
         .toolbar(.hidden, for: .navigationBar)
-        .accessibilityIdentifier("run-summary")
     }
 }

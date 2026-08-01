@@ -51,6 +51,9 @@ struct StepOnboardingView: View {
                 .padding(AFKRelayUIStyle.screenPadding)
             }
             .scrollIndicators(.automatic)
+            // The screen identifier is scoped to the scroll content; applied
+            // any later it would cascade over the dock's own identifiers.
+            .accessibilityIdentifier("step-onboarding")
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 PrimaryActionDock {
                     OnboardingActionsView(
@@ -64,6 +67,5 @@ struct StepOnboardingView: View {
         }
         .foregroundStyle(.white)
         .toolbar(.hidden, for: .navigationBar)
-        .accessibilityIdentifier("step-onboarding")
     }
 }

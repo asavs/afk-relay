@@ -107,7 +107,7 @@ nonisolated final class AFKRelayUITests: XCTestCase {
         // in the honest no-readable-data recovery state with retry offered,
         // never a claimed denial.
         let home = element(app, "game-home")
-        let recovery = app.staticTexts["No readable step data"]
+        let recovery = app.staticTexts["No step data yet"]
         let outcome = XCTWaiter.wait(
             for: [
                 XCTNSPredicateExpectation(

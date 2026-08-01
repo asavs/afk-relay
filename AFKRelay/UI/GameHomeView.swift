@@ -65,6 +65,8 @@ struct GameHomeView: View {
                 .padding(AFKRelayUIStyle.screenPadding)
             }
             .scrollIndicators(.automatic)
+            // Scoped before the inset so it cannot cascade over the dock.
+            .accessibilityIdentifier("game-home")
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 PrimaryActionDock {
                     // The reason a disabled control is disabled reads before
@@ -95,6 +97,5 @@ struct GameHomeView: View {
                     .accessibilityIdentifier("home-settings")
             }
         }
-        .accessibilityIdentifier("game-home")
     }
 }

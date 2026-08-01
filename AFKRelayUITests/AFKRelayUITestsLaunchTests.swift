@@ -27,7 +27,7 @@ nonisolated final class AFKRelayUITestsLaunchTests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(
-            app.otherElements["step-onboarding"]
+            app.descendants(matching: .any)["step-onboarding"]
                 .waitForExistence(timeout: 20)
         )
 
