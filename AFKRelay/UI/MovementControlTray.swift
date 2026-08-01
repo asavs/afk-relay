@@ -47,10 +47,10 @@ struct MovementControlTray: View {
         }
     }
 
+    // Paused state is announced by the pause overlay; the tray only warns
+    // about an empty bank.
     private var statusText: String? {
-        if !isRunActive {
-            "Run paused"
-        } else if availableTokens == 0 {
+        if isRunActive, availableTokens == 0 {
             "Out of tokens — walk to earn more"
         } else {
             nil
@@ -58,13 +58,6 @@ struct MovementControlTray: View {
     }
 
     private var statusSymbol: String {
-        if !isRunActive {
-            // Paused is the only state that may say pause.
-            "pause.circle.fill"
-        } else if availableTokens > 0 {
-            "shoeprints.fill"
-        } else {
-            "figure.walk"
-        }
+        "figure.walk"
     }
 }

@@ -41,4 +41,9 @@ enum AFKRelayUIStyle {
         green: 1,
         blue: 0.32
     )
+    static let mana = Color(
+        red: 0.62,
+        green: 0.48,
+        blue: 1
+    )
 }

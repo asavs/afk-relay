@@ -57,6 +57,7 @@ final class GameCoordinator {
     @ObservationIgnored private var playerProgress = PlayerProgressState()
     @ObservationIgnored private var movementIntent = Vector2.zero
     @ObservationIgnored private var runStartingLifetimeSpend: Int64 = 0
+    @ObservationIgnored private var runStartingTokens: Int64 = 1
     @ObservationIgnored private var bootstrapStarted = false
     @ObservationIgnored private var isEstablishingStepConnection = false
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
@@ -84,6 +85,7 @@ final class GameCoordinator {
     var hudModel: ArenaHUDModel {
         ArenaHUDModel(
             availableTokens: availableTokens,
+            runStartingTokens: runStartingTokens,
             playerHealth: playerHealth,
             maximumPlayerHealth: composition.balance.playerHitPoints,
             survivalDuration: survivalDuration,
@@ -196,6 +198,7 @@ final class GameCoordinator {
         guard canStartRun, let economyLedger else { return }
         movementIntent = .zero
         runStartingLifetimeSpend = economyLedger.state.lifetimeTokensSpent
+        runStartingTokens = max(1, economyLedger.state.availableTokens)
         tokensSpentThisRun = 0
         friendlyFireDefeatsThisRun = 0
         survivalDuration = 0

@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// One thin strip: the arena below it belongs to the game. Reads
-/// tokens · elapsed · life, with pause as the only control.
+/// One thin strip: elapsed time on the left; hearts, stamina, and the
+/// future mana reserve on the right; pause as the only control. The arena
+/// below it belongs to the game.
 struct ArenaHUDView: View {
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -15,21 +16,15 @@ struct ArenaHUDView: View {
                 // Size-driven: the stacked layout engages the moment one
                 // line stops fitting, well before accessibility sizes.
                 ViewThatFits(in: .horizontal) {
-                    HStack(spacing: AFKRelayUIStyle.compactSpacing) {
-                        tokens
-                        Spacer(minLength: AFKRelayUIStyle.compactSpacing)
+                    HStack(alignment: .center, spacing: AFKRelayUIStyle.compactSpacing) {
                         elapsed
                         Spacer(minLength: AFKRelayUIStyle.compactSpacing)
-                        life
+                        vitals
                     }
 
                     VStack(alignment: .leading, spacing: 6) {
-                        tokens
-                        HStack(spacing: AFKRelayUIStyle.compactSpacing) {
-                            elapsed
-                            Spacer(minLength: AFKRelayUIStyle.compactSpacing)
-                            life
-                        }
+                        elapsed
+                        vitals
                     }
                 }
                 .font(.subheadline)
@@ -43,17 +38,6 @@ struct ArenaHUDView: View {
         .foregroundStyle(.white)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("arena-hud")
-    }
-
-    private var tokens: some View {
-        Label(
-            model.availableTokens.formatted(.number.grouping(.automatic)),
-            systemImage: "shoeprints.fill"
-        )
-        .bold()
-        .monospacedDigit()
-        .accessibilityLabel("Movement tokens")
-        .accessibilityValue("\(model.availableTokens)")
     }
 
     private var elapsed: some View {
@@ -71,11 +55,34 @@ struct ArenaHUDView: View {
         )
     }
 
-    private var life: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "shield.lefthalf.filled")
-                .foregroundStyle(.secondary)
+    private var vitals: some View {
+        VStack(alignment: .trailing, spacing: 5) {
+            hearts
 
+            HUDResourceBar(
+                systemImage: "shoeprints.fill",
+                tint: AFKRelayUIStyle.player,
+                fraction: model.staminaFraction,
+                valueText: model.availableTokens
+                    .formatted(.number.grouping(.automatic)),
+                accessibilityLabel: "Movement tokens",
+                accessibilityValue: "\(model.availableTokens)"
+            )
+
+            // A reserved seam for future meditation-powered spells; inert
+            // in the gameplay proof.
+            HUDResourceBar(
+                systemImage: "sparkles",
+                tint: AFKRelayUIStyle.mana,
+                fraction: 0,
+                accessibilityLabel: "Mana",
+                accessibilityValue: "Not yet available"
+            )
+        }
+    }
+
+    private var hearts: some View {
+        HStack(spacing: 4) {
             if model.maximumPlayerHealth <= 5,
                !dynamicTypeSize.isAccessibilitySize
             {
@@ -90,6 +97,8 @@ struct ArenaHUDView: View {
                         )
                 }
             } else {
+                Image(systemName: "heart.fill")
+                    .foregroundStyle(AFKRelayUIStyle.enemy)
                 Text("\(model.playerHealth)/\(model.maximumPlayerHealth)")
                     .monospacedDigit()
                     .bold()
