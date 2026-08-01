@@ -10,42 +10,39 @@ struct ArenaHUDView: View {
     let onPause: @MainActor () -> Void
 
     var body: some View {
-        // Size-driven: the two-line layout engages the moment the strip
-        // stops fitting, well before accessibility type sizes.
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: AFKRelayUIStyle.standardSpacing) {
-                strip
-                pauseButton
-            }
+        HStack(alignment: .top, spacing: AFKRelayUIStyle.compactSpacing) {
+            DiagnosticPanel(isOverlay: true) {
+                // Size-driven: the stacked layout engages the moment one
+                // line stops fitting, well before accessibility sizes.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: AFKRelayUIStyle.compactSpacing) {
+                        tokens
+                        Spacer(minLength: AFKRelayUIStyle.compactSpacing)
+                        elapsed
+                        Spacer(minLength: AFKRelayUIStyle.compactSpacing)
+                        life
+                    }
 
-            VStack(alignment: .leading, spacing: AFKRelayUIStyle.compactSpacing) {
-                tokens
-                HStack(alignment: .center) {
-                    elapsed
-                    Spacer(minLength: AFKRelayUIStyle.compactSpacing)
-                    life
-                    Spacer(minLength: AFKRelayUIStyle.compactSpacing)
-                    pauseButton
+                    VStack(alignment: .leading, spacing: 6) {
+                        tokens
+                        HStack(spacing: AFKRelayUIStyle.compactSpacing) {
+                            elapsed
+                            Spacer(minLength: AFKRelayUIStyle.compactSpacing)
+                            life
+                        }
+                    }
                 }
+                .font(.subheadline)
             }
+            .frame(maxWidth: .infinity)
+
+            pauseButton
         }
         .padding(.horizontal, AFKRelayUIStyle.standardSpacing)
         .padding(.vertical, AFKRelayUIStyle.compactSpacing)
         .foregroundStyle(.white)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("arena-hud")
-    }
-
-    private var strip: some View {
-        DiagnosticPanel(isOverlay: true) {
-            HStack(spacing: AFKRelayUIStyle.standardSpacing) {
-                tokens
-                Spacer(minLength: AFKRelayUIStyle.compactSpacing)
-                elapsed
-                Spacer(minLength: AFKRelayUIStyle.compactSpacing)
-                life
-            }
-        }
     }
 
     private var tokens: some View {
