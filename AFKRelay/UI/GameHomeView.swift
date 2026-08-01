@@ -28,7 +28,9 @@ struct GameHomeView: View {
 
             ScrollView {
                 VStack(spacing: AFKRelayUIStyle.generousSpacing) {
-                    VStack(spacing: AFKRelayUIStyle.compactSpacing) {
+                    VStack(spacing: AFKRelayUIStyle.standardSpacing) {
+                        AvatarBadgeView()
+
                         Text("AFK RELAY")
                             .font(.largeTitle)
                             .bold()
@@ -93,43 +95,48 @@ struct GameHomeView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
+
+                    // The reason a disabled Start Run is disabled reads in
+                    // the content, above the control it explains.
+                    if let startBlockedReason {
+                        Label(startBlockedReason, systemImage: "shoeprints.fill")
+                            .font(.callout)
+                            .foregroundStyle(AFKRelayUIStyle.warning)
+                            .multilineTextAlignment(.center)
+                    }
                 }
                 .padding(AFKRelayUIStyle.screenPadding)
             }
             .scrollIndicators(.automatic)
-            // Scoped before the inset so it cannot cascade over the dock.
+            // Scoped before the toolbar joins so it cannot cascade over it.
             .accessibilityIdentifier("game-home")
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                PrimaryActionDock {
-                    // The reason a disabled control is disabled reads before
-                    // the control, for sighted users and VoiceOver alike.
-                    if let startBlockedReason {
-                        VStack(spacing: 4) {
-                            Image(systemName: "shoeprints.fill")
-                            Text(startBlockedReason)
-                                .multilineTextAlignment(.center)
-                        }
-                        .font(.callout)
-                        .foregroundStyle(AFKRelayUIStyle.warning)
-                    }
-
-                    Button(action: onStartRun) {
-                        Label("Start Run", systemImage: "play.fill")
-                            .font(.title3.bold())
-                            .frame(maxWidth: .infinity, minHeight: AFKRelayUIStyle.minimumTapTarget)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!canStartRun)
-                    .accessibilityHint(startBlockedReason ?? "")
-                    .accessibilityIdentifier("start-run")
-                }
-            }
         }
         .foregroundStyle(.white)
+        .toolbar(.hidden, for: .navigationBar)
+        // The native bottom bar is the screen's action row:
+        // Settings · Start Run · Leaderboard (coming later).
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .bottomBar) {
                 Button("Settings", systemImage: "gearshape", action: onShowSettings)
                     .accessibilityIdentifier("home-settings")
+
+                Spacer()
+
+                Button(action: onStartRun) {
+                    Label("Start Run", systemImage: "play.fill")
+                        .font(.headline)
+                        .padding(.horizontal, AFKRelayUIStyle.standardSpacing)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!canStartRun)
+                .accessibilityHint(startBlockedReason ?? "")
+                .accessibilityIdentifier("start-run")
+
+                Spacer()
+
+                Button("Leaderboard", systemImage: "trophy") {}
+                    .disabled(true)
+                    .accessibilityHint("Coming later")
             }
         }
     }

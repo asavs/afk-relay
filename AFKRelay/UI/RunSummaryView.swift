@@ -12,10 +12,7 @@ struct RunSummaryView: View {
 
             ScrollView {
                 VStack(spacing: AFKRelayUIStyle.generousSpacing) {
-                    Image(systemName: "flag.pattern.checkered")
-                        .font(.largeTitle)
-                        .foregroundStyle(AFKRelayUIStyle.player)
-                        .accessibilityHidden(true)
+                    AvatarBadgeView(isDefeated: true)
 
                     VStack(spacing: AFKRelayUIStyle.compactSpacing) {
                         Text("Run Over")
@@ -78,23 +75,26 @@ struct RunSummaryView: View {
                 .padding(AFKRelayUIStyle.screenPadding)
             }
             .scrollIndicators(.automatic)
-            // Scoped before the inset so it cannot cascade over the dock.
+            // Scoped before the toolbar joins so it cannot cascade over it.
             .accessibilityIdentifier("run-summary")
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                PrimaryActionDock {
-                    Button("Run Again", systemImage: "arrow.clockwise", action: onRunAgain)
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .accessibilityIdentifier("run-again")
-
-                    Button("Return Home", systemImage: "house", action: onReturnHome)
-                        .buttonStyle(.bordered)
-                        .controlSize(.large)
-                        .accessibilityIdentifier("return-home")
-                }
-            }
         }
         .foregroundStyle(.white)
         .toolbar(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItemGroup(placement: .bottomBar) {
+                Button("Return Home", systemImage: "house", action: onReturnHome)
+                    .accessibilityIdentifier("return-home")
+
+                Spacer()
+
+                Button(action: onRunAgain) {
+                    Label("Run Again", systemImage: "arrow.clockwise")
+                        .font(.headline)
+                        .padding(.horizontal, AFKRelayUIStyle.standardSpacing)
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("run-again")
+            }
+        }
     }
 }
