@@ -369,6 +369,8 @@ final class ArenaRenderer {
 
     private func makeAttackNodes(for attack: ArenaRenderAttack) -> AttackNodes {
         let container = SKNode()
+        let telegraphCrop = SKCropNode()
+        let telegraphMask = SKShapeNode()
         let telegraph = SKSpriteNode()
         let active = SKShapeNode()
         let identifier = makeLabel()
@@ -380,10 +382,14 @@ final class ArenaRenderer {
         identifier.name = "attack.identifier"
         timing.name = "attack.timing"
 
-        telegraph.zPosition = -20
         telegraph.colorBlendFactor = 1
+        telegraphMask.lineWidth = 0
+        telegraphMask.fillColor = .white
+        telegraphCrop.maskNode = telegraphMask
+        telegraphCrop.zPosition = -20
+        telegraphCrop.addChild(telegraph)
 
-        container.addChild(telegraph)
+        container.addChild(telegraphCrop)
         container.addChild(active)
         container.addChild(identifier)
         container.addChild(timing)
@@ -391,6 +397,8 @@ final class ArenaRenderer {
 
         return AttackNodes(
             container: container,
+            telegraphCrop: telegraphCrop,
+            telegraphMask: telegraphMask,
             telegraph: telegraph,
             active: active,
             identifier: identifier,
@@ -431,6 +439,23 @@ final class ArenaRenderer {
         nodes.telegraph.zRotation =
             (attack.telegraphStartAngle + attack.telegraphEndAngle) / 2
 
+        // Ground the blade has already crossed is safe, so the warning is
+        // clipped to what it has not reached yet and the swing appears to
+        // push it along. Leaving the full wedge lit through the active phase
+        // marked ground that could no longer hurt anyone, which is worse than
+        // showing nothing — it teaches the player to distrust the warning.
+        let survivingStart = attack.phase == .telegraph
+            ? attack.telegraphStartAngle
+            : max(attack.telegraphStartAngle, attack.activeEndAngle)
+        nodes.telegraphMask.path = survivingStart < attack.telegraphEndAngle
+            ? sectorPath(
+                reach: attack.reach,
+                startAngle: survivingStart,
+                endAngle: attack.telegraphEndAngle
+            )
+            : CGMutablePath()
+
+
         nodes.active.path = sectorPath(
             reach: attack.reach,
             startAngle: attack.activeStartAngle,
@@ -440,29 +465,12 @@ final class ArenaRenderer {
         nodes.active.zPosition = -10
         nodes.active.isHidden = attack.phase != .active
 
-        // The telegraph breathes while it warns; the pulse is presentation
-        // only and never runs for Reduce Motion users.
-        if attack.phase == .telegraph, !accessibility.reduceMotion {
-            if nodes.telegraph.action(forKey: "telegraph-pulse") == nil {
-                nodes.telegraph.alpha = 1
-                nodes.telegraph.run(
-                    .repeatForever(
-                        .sequence([
-                            .fadeAlpha(to: 0.55, duration: 0.28),
-                            .fadeAlpha(to: 1, duration: 0.28),
-                        ])
-                    ),
-                    withKey: "telegraph-pulse"
-                )
-            }
-        } else {
-            nodes.telegraph.removeAction(forKey: "telegraph-pulse")
-            nodes.telegraph.alpha = switch attack.phase {
-            case .telegraph: 1
-            case .active: 0.55
-            case .recovery: 0.2
-            }
-        }
+        // The warning used to breathe, from a time when an even wedge had no
+        // other way to draw attention. The gradient does that work now, and a
+        // pulse on top of it only fought the shape it was meant to sell — so
+        // the telegraph holds steady and the blade clearing it is the only
+        // motion in the warning.
+        nodes.telegraph.alpha = attack.phase == .telegraph ? 1 : 0.55
 
         nodes.identifier.text = "\(attack.id) • \(attack.sourceEntityID)"
         nodes.identifier.position = CGPoint(x: 0, y: attack.reach + 24)
@@ -707,6 +715,11 @@ private extension ArenaRenderer {
 
     final class AttackNodes {
         let container: SKNode
+        /// Clips the warning to the ground the blade has not reached yet.
+        let telegraphCrop: SKCropNode
+        /// The mask driving that clip: a sector covering only what is still
+        /// dangerous.
+        let telegraphMask: SKShapeNode
         /// One sprite carrying the whole warning — gradient and tapering arc
         /// baked into a cached texture, rotated to face the swing. The shape
         /// never varies at runtime, so drawing it as geometry every frame was
@@ -718,12 +731,16 @@ private extension ArenaRenderer {
 
         init(
             container: SKNode,
+            telegraphCrop: SKCropNode,
+            telegraphMask: SKShapeNode,
             telegraph: SKSpriteNode,
             active: SKShapeNode,
             identifier: SKLabelNode,
             timing: SKLabelNode
         ) {
             self.container = container
+            self.telegraphCrop = telegraphCrop
+            self.telegraphMask = telegraphMask
             self.telegraph = telegraph
             self.active = active
             self.identifier = identifier
