@@ -416,7 +416,40 @@ final class ArenaRenderer {
         let activeStyle = catalog.style(for: .attackActive, accessibility: accessibility)
 
         nodes.container.position = attack.origin
+        nodes.telegraph.color = telegraphStyle.fillColor
+        apply(activeStyle, to: nodes.active)
 
+        switch attack.shape {
+        case let .sweep(sweep):
+            updateSweep(nodes, with: attack, sweep: sweep, accessibility: accessibility)
+        case let .shot(shot):
+            updateShot(
+                nodes,
+                with: attack,
+                shot: shot,
+                activeStyle: activeStyle,
+                accessibility: accessibility
+            )
+        }
+
+        nodes.active.zPosition = -10
+        nodes.active.isHidden = attack.phase != .active
+
+        nodes.identifier.text = "\(attack.id) • \(attack.sourceEntityID)"
+        nodes.identifier.position = CGPoint(x: 0, y: attack.reach + 24)
+        nodes.identifier.isHidden = !(diagnostics.isEnabled && diagnostics.showsAttackIdentifiers)
+
+        nodes.timing.text = "\(attack.phase.rawValue) \(Int(attack.phaseProgress * 100))%"
+        nodes.timing.position = CGPoint(x: 0, y: attack.reach + 48)
+        nodes.timing.isHidden = !(diagnostics.isEnabled && diagnostics.showsPhaseTiming)
+    }
+
+    private func updateSweep(
+        _ nodes: AttackNodes,
+        with attack: ArenaRenderAttack,
+        sweep: ArenaRenderAttack.Sweep,
+        accessibility: ArenaAccessibilityOptions
+    ) {
         // The blade always travels from the telegraph's start angle to its
         // end angle. Nothing drew that before, so a wedge that reads
         // identically at both ends was hiding the one fact the player most
@@ -424,24 +457,24 @@ final class ArenaRenderer {
         // where it lands, and the outline is left open on that leading side,
         // so direction survives both greyscale and Differentiate Without
         // Colour — it is carried by shape and density, not hue.
-        let span = attack.telegraphEndAngle - attack.telegraphStartAngle
+        let span = sweep.telegraphEndAngle - sweep.telegraphStartAngle
         nodes.telegraph.texture = telegraphTextures.texture(
             for: .sweep(arcDegrees: Double(span) * 180 / .pi),
             increaseContrast: accessibility.increaseContrast
         )
+        nodes.telegraph.anchorPoint = CGPoint(x: 0.5, y: 0.5)
         // The texture draws its own radius as a fraction of its side, so the
         // sprite is sized from that rather than from the reach directly.
         let extent = attack.reach / TelegraphTextureCache.radiusFraction
         nodes.telegraph.size = CGSize(width: extent, height: extent)
-        nodes.telegraph.color = telegraphStyle.fillColor
         // The texture is drawn centred on its own zero angle, so rotating to
         // the arc's midpoint lands its dense end on the swing's start.
         nodes.telegraph.zRotation =
-            (attack.telegraphStartAngle + attack.telegraphEndAngle) / 2
+            (sweep.telegraphStartAngle + sweep.telegraphEndAngle) / 2
         // Mirroring across the arc's own axis swaps which edge is dense
         // without a second texture: the ramp is symmetric in everything but
         // direction, which is the one thing being flipped.
-        nodes.telegraph.yScale = attack.isReversed ? -1 : 1
+        nodes.telegraph.yScale = sweep.isReversed ? -1 : 1
 
         // Ground the blade has already crossed is safe, so the warning is
         // clipped to what it has not reached yet and the swing appears to
@@ -453,14 +486,14 @@ final class ArenaRenderer {
         let survivingStart: CGFloat
         let survivingEnd: CGFloat
         if attack.phase == .telegraph {
-            survivingStart = attack.telegraphStartAngle
-            survivingEnd = attack.telegraphEndAngle
-        } else if attack.isReversed {
-            survivingStart = attack.telegraphStartAngle
-            survivingEnd = min(attack.telegraphEndAngle, attack.activeStartAngle)
+            survivingStart = sweep.telegraphStartAngle
+            survivingEnd = sweep.telegraphEndAngle
+        } else if sweep.isReversed {
+            survivingStart = sweep.telegraphStartAngle
+            survivingEnd = min(sweep.telegraphEndAngle, sweep.activeStartAngle)
         } else {
-            survivingStart = max(attack.telegraphStartAngle, attack.activeEndAngle)
-            survivingEnd = attack.telegraphEndAngle
+            survivingStart = max(sweep.telegraphStartAngle, sweep.activeEndAngle)
+            survivingEnd = sweep.telegraphEndAngle
         }
         nodes.telegraphMask.path = survivingStart < survivingEnd
             ? sectorPath(
@@ -470,15 +503,11 @@ final class ArenaRenderer {
             )
             : CGMutablePath()
 
-
         nodes.active.path = sectorPath(
             reach: attack.reach,
-            startAngle: attack.activeStartAngle,
-            endAngle: attack.activeEndAngle
+            startAngle: sweep.activeStartAngle,
+            endAngle: sweep.activeEndAngle
         )
-        apply(activeStyle, to: nodes.active)
-        nodes.active.zPosition = -10
-        nodes.active.isHidden = attack.phase != .active
 
         // The warning used to breathe, from a time when an even wedge had no
         // other way to draw attention. The gradient does that work now, and a
@@ -486,14 +515,94 @@ final class ArenaRenderer {
         // the telegraph holds steady and the blade clearing it is the only
         // motion in the warning.
         nodes.telegraph.alpha = attack.phase == .telegraph ? 1 : 0.55
+    }
 
-        nodes.identifier.text = "\(attack.id) • \(attack.sourceEntityID)"
-        nodes.identifier.position = CGPoint(x: 0, y: attack.reach + 24)
-        nodes.identifier.isHidden = !(diagnostics.isEnabled && diagnostics.showsAttackIdentifiers)
+    private func updateShot(
+        _ nodes: AttackNodes,
+        with attack: ArenaRenderAttack,
+        shot: ArenaRenderAttack.Shot,
+        activeStyle: PresentationStyle,
+        accessibility: ArenaAccessibilityOptions
+    ) {
+        // The lane texture is drawn running along +X from its left edge, so
+        // the sprite is anchored at the muzzle and simply turned to the axis.
+        let spriteHalfHeight = shot.halfWidth / TelegraphTextureCache.laneWidthFraction
+        nodes.telegraph.texture = telegraphTextures.texture(
+            for: .lane,
+            increaseContrast: accessibility.increaseContrast
+        )
+        nodes.telegraph.anchorPoint = CGPoint(x: 0, y: 0.5)
+        nodes.telegraph.size = CGSize(
+            width: attack.reach,
+            height: spriteHalfHeight * 2
+        )
+        nodes.telegraph.zRotation = shot.axisAngle
+        nodes.telegraph.yScale = 1
 
-        nodes.timing.text = "\(attack.phase.rawValue) \(Int(attack.phaseProgress * 100))%"
-        nodes.timing.position = CGPoint(x: 0, y: attack.reach + 48)
-        nodes.timing.isHidden = !(diagnostics.isEnabled && diagnostics.showsPhaseTiming)
+        // Lane the bolt has already crossed is safe, exactly as with the
+        // sweep's arc. A blocked shot clears the whole lane at once: the rest
+        // of it will never be travelled, and leaving it lit would mark ground
+        // nothing can reach.
+        let survivingFrom: CGFloat = attack.phase == .telegraph
+            ? 0
+            : shot.noseDistance
+        nodes.telegraphMask.path = shot.isBlocked || attack.phase == .recovery
+            ? CGMutablePath()
+            : lanePath(
+                from: survivingFrom,
+                to: attack.reach,
+                halfHeight: spriteHalfHeight,
+                angle: shot.axisAngle
+            )
+
+        // The bolt itself: a short capsule at the nose, drawn from the same
+        // distances the simulation advanced.
+        nodes.active.path = lanePath(
+            from: shot.tailDistance,
+            to: shot.noseDistance,
+            halfHeight: shot.halfWidth,
+            angle: shot.axisAngle,
+            cornerRadius: shot.halfWidth
+        )
+        // The role's fill alpha is tuned for a sector nearly two hundred
+        // points across. A bolt is a twenty-eight-point capsule, and at the
+        // same alpha it reads as a smudge on the dark floor — so it takes the
+        // role's colour at full strength. The catalog still owns the hue;
+        // only the coverage it is compensating for differs.
+        nodes.active.fillColor = activeStyle.fillColor
+
+        // Unlike the sweep, the lane ahead of a travelling bolt is not a
+        // leftover warning — it is where the bolt will be in a fraction of a
+        // second, so it stays at full strength until the shot is spent.
+        nodes.telegraph.alpha = attack.phase == .recovery ? 0.55 : 1
+    }
+
+    /// A rectangle laid along an axis from the attack's origin, in the
+    /// container's unrotated space.
+    private func lanePath(
+        from: CGFloat,
+        to: CGFloat,
+        halfHeight: CGFloat,
+        angle: CGFloat,
+        cornerRadius: CGFloat = 0
+    ) -> CGPath {
+        guard to > from, halfHeight > 0 else { return CGMutablePath() }
+        var transform = CGAffineTransform(rotationAngle: angle)
+        let rect = CGRect(
+            x: from,
+            y: -halfHeight,
+            width: to - from,
+            height: halfHeight * 2
+        )
+        guard cornerRadius > 0 else {
+            return CGPath(rect: rect, transform: &transform)
+        }
+        return CGPath(
+            roundedRect: rect,
+            cornerWidth: min(cornerRadius, rect.width / 2),
+            cornerHeight: min(cornerRadius, rect.height / 2),
+            transform: &transform
+        )
     }
 
     private func updateImpacts(

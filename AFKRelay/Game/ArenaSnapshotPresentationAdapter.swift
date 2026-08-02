@@ -64,16 +64,24 @@ enum ArenaSnapshotPresentationAdapter {
         _ entity: ArenaEntity,
         balance: MVPBalance
     ) -> ArenaRenderEntity {
-        let maximumHitPoints = entity.isPlayer
-            ? balance.playerHitPoints
-            : balance.enemyHitPoints
+        let maximumHitPoints: Int = if entity.isPlayer {
+            balance.playerHitPoints
+        } else if entity.archetype == .marksman {
+            balance.marksmanHitPoints
+        } else {
+            balance.enemyHitPoints
+        }
         // Renderer silhouettes point along +Y in texture space.
         let facingAngle = atan2(entity.facing.y, entity.facing.x) - .pi / 2
 
         // Damage state travels as a semantic role so a catalog can render
-        // wounded bodies however it likes (tint, limp, broken armor).
+        // wounded bodies however it likes (tint, limp, broken armor). The
+        // archetype travels the same way: what a body can do to you is the
+        // one thing its silhouette has to say.
         let role: PresentationRole = if entity.isPlayer {
             .playerBody
+        } else if entity.archetype == .marksman {
+            .enemyBodyRanged
         } else if entity.hitPoints < maximumHitPoints {
             .enemyBodyWounded
         } else {
@@ -95,56 +103,127 @@ enum ArenaSnapshotPresentationAdapter {
         snapshot: ArenaSnapshot,
         balance: MVPBalance
     ) -> ArenaRenderAttack? {
-        guard let source = snapshot.enemies.first(where: { $0.id == attack.sourceID }) else {
-            return nil
-        }
-
-        let telegraph = SweepGeometry.telegraphAngles(
-            facing: attack.facing,
-            balance: balance
-        )
-        let blade = SweepGeometry.activeBladeAngles(
-            facing: attack.facing,
-            age: attack.age,
-            reversed: attack.isReversed,
-            balance: balance
-        )
-        let phase: ArenaRenderAttack.Phase
-        let phaseProgress: Double
-
-        switch SweepGeometry.phase(at: attack.age, balance: balance) {
-        case let .telegraph(progress):
-            phase = .telegraph
-            phaseProgress = progress
-        case let .active(progress):
-            phase = .active
-            phaseProgress = progress
-        case let .recovery(progress):
-            phase = .recovery
-            phaseProgress = progress
-        case .finished:
-            phase = .recovery
-            phaseProgress = 1
-        }
-
-        let clampedProgress = min(max(phaseProgress, 0), 1)
+        // Each attack's identity is its source and the tick it activated on,
+        // which stays stable as it ages so the renderer keeps reusing one set
+        // of nodes for it.
         let activationTick = Int(
             max(0, ((snapshot.elapsed - attack.age) * 60).rounded())
         )
+        let id = "A\(attack.sourceID)-\(activationTick)"
+        let sourceEntityID = "E\(attack.sourceID)"
 
-        return ArenaRenderAttack(
-            id: "A\(attack.sourceID)-\(activationTick)",
-            sourceEntityID: "E\(attack.sourceID)",
-            origin: point(source.position),
-            reach: balance.sweepReach,
-            telegraphStartAngle: telegraph.lowerBound,
-            telegraphEndAngle: telegraph.upperBound,
-            activeStartAngle: blade.lowerBound,
-            activeEndAngle: blade.upperBound,
-            isReversed: attack.isReversed,
-            phase: phase,
-            phaseProgress: clampedProgress
-        )
+        switch attack.kind {
+        case .sweep:
+            // A sweep is the source's own limb, so it is drawn from wherever
+            // that body currently stands.
+            guard let source = snapshot.enemies.first(where: {
+                $0.id == attack.sourceID
+            }) else {
+                return nil
+            }
+
+            let telegraph = SweepGeometry.telegraphAngles(
+                facing: attack.facing,
+                balance: balance
+            )
+            let blade = SweepGeometry.activeBladeAngles(
+                facing: attack.facing,
+                age: attack.age,
+                reversed: attack.isReversed,
+                balance: balance
+            )
+            let (phase, progress) = sweepPhase(attack.age, balance: balance)
+
+            return ArenaRenderAttack(
+                id: id,
+                sourceEntityID: sourceEntityID,
+                origin: point(source.position),
+                reach: balance.sweepReach,
+                shape: .sweep(
+                    ArenaRenderAttack.Sweep(
+                        telegraphStartAngle: telegraph.lowerBound,
+                        telegraphEndAngle: telegraph.upperBound,
+                        activeStartAngle: blade.lowerBound,
+                        activeEndAngle: blade.upperBound,
+                        isReversed: attack.isReversed
+                    )
+                ),
+                phase: phase,
+                phaseProgress: progress
+            )
+        case .shot:
+            // A shot is drawn from the muzzle it left, which is fixed — it
+            // does not follow the shooter, and it outlives one.
+            let nose = ShotGeometry.noseDistance(
+                at: attack.age,
+                stoppedAt: attack.stopDistance,
+                balance: balance
+            )
+            let (phase, progress) = shotPhase(
+                attack.age,
+                stoppedAt: attack.stopDistance,
+                balance: balance
+            )
+
+            return ArenaRenderAttack(
+                id: id,
+                sourceEntityID: sourceEntityID,
+                origin: point(attack.origin),
+                reach: balance.shotRange,
+                shape: .shot(
+                    ArenaRenderAttack.Shot(
+                        axisAngle: atan2(attack.facing.y, attack.facing.x),
+                        halfWidth: balance.shotRadius,
+                        noseDistance: nose,
+                        tailDistance: max(
+                            0,
+                            nose - balance.shotSpeed * boltTrailDuration
+                        ),
+                        isBlocked: attack.stopDistance != nil
+                    )
+                ),
+                phase: phase,
+                phaseProgress: progress
+            )
+        }
+    }
+
+    /// How long a stretch of lane the bolt itself occupies, expressed as the
+    /// time it takes to cross it. Presentation only — hit evaluation is the
+    /// nose's swept path, not this body.
+    ///
+    /// Long enough to read as a bolt rather than a dot. The lane is the
+    /// warning, but the bolt is the thing that actually hits, and a player
+    /// has to be able to see where it currently is.
+    private static let boltTrailDuration = 0.11
+
+    private static func sweepPhase(
+        _ age: Double,
+        balance: MVPBalance
+    ) -> (ArenaRenderAttack.Phase, Double) {
+        switch SweepGeometry.phase(at: age, balance: balance) {
+        case let .telegraph(progress): (.telegraph, progress)
+        case let .active(progress): (.active, progress)
+        case let .recovery(progress): (.recovery, progress)
+        case .finished: (.recovery, 1)
+        }
+    }
+
+    private static func shotPhase(
+        _ age: Double,
+        stoppedAt: Double?,
+        balance: MVPBalance
+    ) -> (ArenaRenderAttack.Phase, Double) {
+        switch ShotGeometry.phase(
+            at: age,
+            stoppedAt: stoppedAt,
+            balance: balance
+        ) {
+        case let .telegraph(progress): (.telegraph, progress)
+        case let .flight(progress): (.active, progress)
+        case let .recovery(progress): (.recovery, progress)
+        case .finished: (.recovery, 1)
+        }
     }
 
     private static func makeImpact(

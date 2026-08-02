@@ -272,7 +272,7 @@ struct ArenaSimulationTests {
             tutorialCompleted: true
         )
         var spawnTimes: [Double] = []
-        var spawnPositions: [Vector2] = []
+        var spawned: [ArenaEntity] = []
         var maximumLivingEnemies = arena.enemies.count
 
         for _ in 0..<(5 * 60) {
@@ -285,16 +285,20 @@ struct ArenaSimulationTests {
                     arena.enemies.first(where: { $0.id == id })
                 )
                 spawnTimes.append(arena.elapsed)
-                spawnPositions.append(enemy.position)
+                spawned.append(enemy)
             }
         }
 
         #expect(arena.enemies.count == balance.enemyCap)
         #expect(maximumLivingEnemies == balance.enemyCap)
         #expect(spawnTimes.count == balance.enemyCap - 1)
+        // Health stays at the balance's value for the archetype spawned; the
+        // ranged body is deliberately frailer, and neither inflates.
         #expect(
             arena.enemies.allSatisfy {
-                $0.hitPoints == balance.enemyHitPoints
+                $0.hitPoints == ($0.archetype == .marksman
+                    ? balance.marksmanHitPoints
+                    : balance.enemyHitPoints)
             }
         )
         #expect(
@@ -305,18 +309,19 @@ struct ArenaSimulationTests {
             }
         )
         #expect(
-            spawnPositions.allSatisfy { position in
+            spawned.allSatisfy { enemy in
+                let position = enemy.position
                 let onVerticalEdge =
-                    abs(position.x - balance.enemyRadius) < 0.000_001
+                    abs(position.x - enemy.radius) < 0.000_001
                     || abs(
                         position.x
-                            - (balance.arenaSize.x - balance.enemyRadius)
+                            - (balance.arenaSize.x - enemy.radius)
                     ) < 0.000_001
                 let onHorizontalEdge =
-                    abs(position.y - balance.enemyRadius) < 0.000_001
+                    abs(position.y - enemy.radius) < 0.000_001
                     || abs(
                         position.y
-                            - (balance.arenaSize.y - balance.enemyRadius)
+                            - (balance.arenaSize.y - enemy.radius)
                     ) < 0.000_001
                 return onVerticalEdge || onHorizontalEdge
             }

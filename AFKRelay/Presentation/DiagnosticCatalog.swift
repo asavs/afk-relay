@@ -60,6 +60,13 @@ final class DiagnosticCatalog: ArenaPresentationCatalog {
                 lineWidth: accessibility.increaseContrast ? 7 : 5,
                 fillAlpha: 1
             )
+        case .enemyBodyRanged:
+            PresentationStyle(
+                fillColor: palette.enemyRanged,
+                strokeColor: palette.primaryInk,
+                lineWidth: accessibility.increaseContrast ? 7 : 5,
+                fillAlpha: 1
+            )
         case .enemyHurtbox:
             PresentationStyle(
                 fillColor: .clear,
@@ -168,6 +175,8 @@ final class DiagnosticCatalog: ArenaPresentationCatalog {
                 drawEnemy(in: context, accessibility: accessibility, wounded: false)
             case .enemyBodyWounded:
                 drawEnemy(in: context, accessibility: accessibility, wounded: true)
+            case .enemyBodyRanged:
+                drawMarksman(in: context, accessibility: accessibility)
             default:
                 drawPlayer(in: context, accessibility: accessibility)
             }
@@ -240,6 +249,39 @@ final class DiagnosticCatalog: ArenaPresentationCatalog {
             context.strokePath()
         }
     }
+
+    // A blunt hexagon with a barrel running out along the facing axis. It has
+    // to be unmistakable against both the chevron and the player's circle at
+    // a glance and at speed: the chevron's silhouette says "closing on you",
+    // and this one has to say "already pointed at you from over there".
+    private func drawMarksman(
+        in context: CGContext,
+        accessibility: ArenaAccessibilityOptions
+    ) {
+        context.move(to: CGPoint(x: 64, y: 20))
+        context.addLine(to: CGPoint(x: 106, y: 44))
+        context.addLine(to: CGPoint(x: 106, y: 84))
+        context.addLine(to: CGPoint(x: 64, y: 108))
+        context.addLine(to: CGPoint(x: 22, y: 84))
+        context.addLine(to: CGPoint(x: 22, y: 44))
+        context.closePath()
+        context.drawPath(using: .fillStroke)
+
+        // The barrel points where the lane will open.
+        context.setStrokeColor(SKColor.black.cgColor)
+        context.setLineWidth(accessibility.increaseContrast ? 14 : 11)
+        context.move(to: CGPoint(x: 64, y: 52))
+        context.addLine(to: CGPoint(x: 64, y: 120))
+        context.strokePath()
+
+        if accessibility.differentiateWithoutColor {
+            // Concentric rings read as an optic, and read as nothing like the
+            // chevron's hatching.
+            context.setLineWidth(4)
+            context.addEllipse(in: CGRect(x: 46, y: 46, width: 36, height: 36))
+            context.strokePath()
+        }
+    }
 }
 
 private extension DiagnosticCatalog {
@@ -250,6 +292,7 @@ private extension DiagnosticCatalog {
         let player: SKColor
         let enemy: SKColor
         let enemyWounded: SKColor
+        let enemyRanged: SKColor
         let telegraph: SKColor
         let attack: SKColor
         let playerDamage: SKColor
@@ -270,6 +313,9 @@ private extension DiagnosticCatalog {
             player = SKColor(red: 0.22, green: 0.95, blue: 1, alpha: 1)
             enemy = SKColor(red: 1, green: 0.35, blue: 0.46, alpha: 1)
             enemyWounded = SKColor(red: 1, green: 0.85, blue: 0.3, alpha: 1)
+            // Enemy-family, but far enough from the chevron's red that the
+            // two never blur together in a crowded arena.
+            enemyRanged = SKColor(red: 0.76, green: 0.44, blue: 1, alpha: 1)
             telegraph = SKColor(red: 1, green: 0.76, blue: 0.18, alpha: 1)
             attack = SKColor(red: 1, green: 0.28, blue: 0.16, alpha: 1)
             playerDamage = SKColor(red: 1, green: 0.98, blue: 0.92, alpha: 1)

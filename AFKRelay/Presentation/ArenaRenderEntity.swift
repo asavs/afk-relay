@@ -25,6 +25,8 @@ struct ArenaRenderEntity: Identifiable, Equatable, Sendable {
             role == .playerBody
                 || role == .enemyBody
                 || role == .enemyBodyWounded
+                || role == .enemyBodyRanged,
+            "\(role) is not a body role"
         )
         self.id = id
         self.role = role
