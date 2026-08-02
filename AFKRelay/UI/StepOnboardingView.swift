@@ -66,12 +66,15 @@ struct StepOnboardingView: View {
             VStack(spacing: AFKRelayUIStyle.compactSpacing) {
                 if showsSettingsAction {
                     Button(
-                        "Review Steps Access",
+                        "Open Apple Health",
                         systemImage: "arrow.up.forward.app",
                         action: onOpenSettings
                     )
                     .buttonStyle(.glass)
                     .controlSize(.large)
+                    // Identified rather than matched by label, so wording can
+                    // change without breaking the device scenarios.
+                    .accessibilityIdentifier("open-health-access")
                 }
 
                 Button(action: primaryAction) {

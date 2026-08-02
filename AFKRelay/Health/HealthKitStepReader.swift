@@ -62,6 +62,22 @@ final class HealthKitStepReader: StepTotalReading {
         let statistics = try await descriptor.result(for: healthStore)
 
         guard let sum = statistics?.sumQuantity() else {
+            // An empty result means one of two things, and HealthKit refuses
+            // to say which: access was denied, or the window genuinely holds
+            // no samples. Treating both as "cannot read" walls off anyone who
+            // connects before walking — first thing in the morning, the
+            // eligibility window starts at midnight and is usually empty.
+            //
+            // A wider look-back separates them. History means reading works,
+            // so an empty window is a true zero. Only a store that yields
+            // nothing at all is unreadable.
+            if try await hasReadableHistory(stepType: stepType) {
+                return StepTotal(
+                    count: 0,
+                    interval: interval,
+                    observedAt: await now()
+                )
+            }
             throw HealthKitStepReaderError.noReadableStepData
         }
 
@@ -76,6 +92,33 @@ final class HealthKitStepReader: StepTotalReading {
             observedAt: await now()
         )
     }
+
+    /// Whether the store yields any step sample at all over a long look-back.
+    ///
+    /// Read-only evidence that reading is permitted, never a minting input:
+    /// the caller's aggregate is still bounded by the eligibility interval, so
+    /// no historical step can be credited by this query existing.
+    private func hasReadableHistory(stepType: HKQuantityType) async throws -> Bool {
+        let end = await now()
+        let start = end.addingTimeInterval(-Self.historyLookBack)
+        let descriptor = HKStatisticsQueryDescriptor(
+            predicate: .quantitySample(
+                type: stepType,
+                predicate: HKQuery.predicateForSamples(
+                    withStart: start,
+                    end: end,
+                    options: [.strictStartDate]
+                )
+            ),
+            options: [.cumulativeSum]
+        )
+        let statistics = try await descriptor.result(for: healthStore)
+        return statistics?.sumQuantity() != nil
+    }
+
+    /// Thirty days, matching the window the bank gauge already reads, so a
+    /// dormant phone is not mistaken for a denied one.
+    private static let historyLookBack: TimeInterval = 30 * 24 * 60 * 60
 
     func averageDailySteps(
         over interval: DateInterval,

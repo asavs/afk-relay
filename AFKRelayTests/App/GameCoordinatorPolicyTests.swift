@@ -143,6 +143,33 @@ struct GameCoordinatorPolicyTests {
         #expect(await repository.load()?.state.hasReadableStepData == true)
     }
 
+    /// Connecting before walking is the ordinary morning case: the
+    /// eligibility window opens at midnight and is still empty. A reader that
+    /// can see Health but finds nothing in that window reports a real zero,
+    /// and a zero is evidence that reading works — so onboarding completes
+    /// rather than accusing the player of a permission problem it cannot
+    /// actually detect.
+    @Test("A day with no steps yet still completes step connection")
+    func emptyDayCompletesConnection() async throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let reader = CoordinatorStepReader(mode: .count(0))
+        let repository = InMemoryLedgerRepository()
+        let coordinator = makeCoordinator(
+            reader: reader,
+            repository: repository,
+            now: now
+        )
+        await coordinator.start()
+
+        await coordinator.establishStepConnection()
+
+        #expect(coordinator.screen == .home)
+        #expect(coordinator.availableTokens == 0)
+        let record = try #require(await repository.load())
+        #expect(record.state.hasReadableStepData)
+        #expect(record.state.lifetimeStepsCredited == 0)
+    }
+
     @Test("Onboarding retry enters home only with readable aggregate evidence")
     func onboardingRetry() {
         #expect(

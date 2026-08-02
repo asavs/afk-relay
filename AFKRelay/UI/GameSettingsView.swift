@@ -22,14 +22,14 @@ struct GameSettingsView: View {
                     .disabled(!refreshState.permitsManualRetry)
 
                     Button(
-                        "Open Settings",
+                        "Open Apple Health",
                         systemImage: "arrow.up.forward.app",
                         action: onOpenSystemSettings
                     )
                 } header: {
                     Text("Steps")
                 } footer: {
-                    Text("Not seeing your steps? Review AFK Relay’s access in Settings, then try again.")
+                    Text("Not seeing your steps? Steps access lives in Health › Sharing › Apps › AFK Relay, not in this app’s Settings page.")
                 }
 
                 DiagnosticsSettingsView(options: $diagnostics)

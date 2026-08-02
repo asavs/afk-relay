@@ -21,6 +21,9 @@
     },
     {
       "parallelizable" : false,
+      "skippedTests" : [
+        "AFKRelayEmptyWindowTests"
+      ],
       "target" : {
         "containerPath" : "container:AFKRelay.xcodeproj",
         "identifier" : "EC132CE53016E70A00C93960",

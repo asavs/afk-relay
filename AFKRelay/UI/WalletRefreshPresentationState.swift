@@ -47,7 +47,12 @@ enum WalletRefreshPresentationState: Equatable, Sendable {
         case let .recoverableFailure(message), let .persistenceBlocked(message):
             message
         case .noReadableStepData:
-            "AFK Relay hasn’t been able to read a step total. Check that AFK Relay can read Steps in Settings, then try again."
+            // Apple Health reports nothing the same way whether access is off
+            // or the day is simply empty, so this cannot claim which it is.
+            // It says what is true and where the answer lives — the Health
+            // app, since Steps access never appears on the app's own Settings
+            // page and looking for it there is a dead end.
+            "AFK Relay can’t find any steps. Either none are recorded yet, or it can’t read them — check Health › Sharing › Apps › AFK Relay."
         case .idle, .refreshing, .current:
             nil
         }

@@ -316,7 +316,19 @@ final class GameCoordinator {
         progressMessage = nil
     }
 
+    /// Sends the player where Steps access actually lives.
+    ///
+    /// The app's own Settings page can never show it: iOS surfaces HealthKit
+    /// permissions only inside the Health app, so a player sent to Settings
+    /// finds Siri, Search and Cellular Data and no way to fix anything. The
+    /// Health app's scheme is not a documented API, so the app's own page
+    /// remains the fallback rather than the destination.
     func openSystemSettings() {
+        let health = URL(string: "x-apple-health://")
+        if let health, UIApplication.shared.canOpenURL(health) {
+            UIApplication.shared.open(health)
+            return
+        }
         guard let url = URL(string: UIApplication.openSettingsURLString) else {
             return
         }
@@ -326,9 +338,9 @@ final class GameCoordinator {
     func resetCorruptEconomy() {
         Task { @MainActor [weak self] in
             guard let self else { return }
-            let eligibilityStart = StepEligibilityPolicy.firstConnectionBoundary(
-                now: self.composition.now(),
-                calendar: self.composition.calendar
+            let eligibilityStart = self.composition.eligibilityBoundary(
+                self.composition.now(),
+                self.composition.calendar
             )
             let baseline = EconomyState(eligibilityStart: eligibilityStart)
             let record = LedgerRecord(generation: 1, state: baseline)
@@ -441,14 +453,14 @@ final class GameCoordinator {
                 return
             } catch {
                 refreshState = .recoverableFailure(
-                    message: "AFK Relay couldn’t finish setting up step access. Try again, or review AFK Relay’s access in Settings."
+                    message: "AFK Relay couldn’t finish setting up step access. Try again, or check Health › Sharing › Apps › AFK Relay."
                 )
                 return
             }
 
-            let eligibilityStart = StepEligibilityPolicy.firstConnectionBoundary(
-                now: composition.now(),
-                calendar: composition.calendar
+            let eligibilityStart = composition.eligibilityBoundary(
+                composition.now(),
+                composition.calendar
             )
             ledger = EconomyLedger(
                 state: EconomyState(eligibilityStart: eligibilityStart),
@@ -522,7 +534,7 @@ final class GameCoordinator {
         } catch {
             publishEconomy()
             refreshState = .recoverableFailure(
-                message: "AFK Relay couldn’t read a step total. Try again, or review AFK Relay’s access in Settings."
+                message: "AFK Relay couldn’t read a step total. Try again, or check Health › Sharing › Apps › AFK Relay."
             )
             return .recoverableFailure
         }

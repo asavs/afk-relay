@@ -12,10 +12,25 @@ struct AppComposition {
     let now: @MainActor @Sendable () -> Date
     var balance: MVPBalance = .v3
     var initialDiagnosticsOptions: DiagnosticsOptions = .disabled
+    /// Where a first connection's eligibility window opens. A seam rather
+    /// than a direct call so a test can open the window at the current
+    /// instant, making it empty by construction — the condition the ordinary
+    /// morning case hits and a device with step history can never reproduce
+    /// on demand.
+    var eligibilityBoundary: @MainActor @Sendable (Date, Calendar) -> Date = {
+        now, calendar in
+        StepEligibilityPolicy.firstConnectionBoundary(
+            now: now,
+            calendar: calendar
+        )
+    }
 
     static func current() -> AppComposition {
 #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("--ui-testing-empty-window") {
+            return uiTestingLiveHealthEmptyWindow()
+        }
         if arguments.contains("--ui-testing-live-health") {
             return uiTestingLiveHealth()
         }
@@ -80,6 +95,21 @@ struct AppComposition {
             calendar: .autoupdatingCurrent,
             now: { .now }
         )
+    }
+
+    /// Live HealthKit with the eligibility window opened at the instant of
+    /// connection, so it is empty however much the player has walked today.
+    ///
+    /// This reproduces on demand what only happens naturally before the first
+    /// steps of a day: the window holds nothing while the store holds plenty.
+    /// The app must read that as a zero rather than as an unreadable store,
+    /// and a device with normal step history can never show that any other
+    /// way. Only the boundary moves — the reader, the store, and the
+    /// reconciliation are the real ones.
+    static func uiTestingLiveHealthEmptyWindow() -> AppComposition {
+        var composition = uiTestingLiveHealth()
+        composition.eligibilityBoundary = { now, _ in now }
+        return composition
     }
 
     /// A saturated arena for instrumented measurement: completed tutorial,

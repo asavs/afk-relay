@@ -145,7 +145,7 @@ nonisolated final class AFKRelayUITests: XCTestCase {
                 "Neither the home wallet nor the honest recovery state appeared"
             )
             XCTAssertTrue(app.buttons["connect-steps"].exists)
-            XCTAssertTrue(app.buttons["Review Steps Access"].exists)
+            XCTAssertTrue(app.buttons["open-health-access"].exists)
         }
     }
 
