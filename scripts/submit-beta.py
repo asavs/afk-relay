@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Puts a released build in front of external testers.
+"""Puts a released build in front of testers.
 
     ./scripts/submit-beta.py <tag> <what-to-test-file> [--dry-run]
 
@@ -8,6 +8,12 @@ attached to an external group and submitted for Beta App Review, and the
 review will not accept an app missing its description, contact details, or
 tester notes. This does all of it, and is safe to re-run: everything is
 created if absent and updated if present.
+
+An internal group is a different shape of the same job, so the group decides
+rather than a flag: internal testers are App Store Connect users, Apple does
+not review builds for them, and attaching is the whole of it. Tester notes
+still apply — they are what testers read — but review contact details are
+neither required nor sent.
 
 What to test is a file because it is the one part that genuinely differs every
 build. Everything else lives in the environment, beside the signing key:
@@ -157,16 +163,14 @@ def find_build(app_id, tag):
 
 
 def find_group(app_id, name):
+    """The group's id and whether it is internal, which decides the rest."""
     status, payload = api(
         "GET", f"/v1/betaGroups?filter%5Bapp%5D={app_id}&limit=50")
     for group in expect(status, payload, 200).get("data", []):
         attributes = group["attributes"]
         if attributes.get("name") == name:
-            if attributes.get("isInternalGroup"):
-                die(f'beta group "{name}" is internal; external review needs '
-                    "an external group")
-            return group["id"]
-    die(f'no external beta group named "{name}". Create it in App Store '
+            return group["id"], bool(attributes.get("isInternalGroup"))
+    die(f'no beta group named "{name}". Create it in App Store '
         "Connect, or set ASC_BETA_GROUP.")
 
 
@@ -292,9 +296,10 @@ def main():
     app_id = find_app(bundle_identifier())
     build_id = find_build(app_id, tag)
     group_name = os.environ.get("ASC_BETA_GROUP", "beta")
-    group_id = find_group(app_id, group_name)
+    group_id, internal = find_group(app_id, group_name)
 
-    print(f"app {app_id} · build {tag} ({build_id}) · group {group_name}")
+    kind = "internal" if internal else "external"
+    print(f"app {app_id} · build {tag} ({build_id}) · {kind} group {group_name}")
     if dry_run:
         print("dry run: everything resolved, nothing submitted")
         return
@@ -302,10 +307,16 @@ def main():
     print("app localization:", upsert_app_localization(
         app_id, description, env("ASC_FEEDBACK_EMAIL")))
     print("build localization:", upsert_build_localization(build_id, whats_new))
-    update_review_detail(app_id, notes)
-    print("review detail: updated")
+    if not internal:
+        update_review_detail(app_id, notes)
+        print("review detail: updated")
     attach_to_group(group_id, build_id)
     print(f"attached to {group_name}")
+
+    if internal:
+        print("\nInternal testers can install as soon as the build finishes "
+              "processing — Apple does not review internal builds.")
+        return
     print("submitted:", submit(build_id))
     print("\nBeta App Review takes roughly 24–48 hours on a first submission; "
           "later builds usually clear faster.")
