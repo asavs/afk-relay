@@ -438,20 +438,35 @@ final class ArenaRenderer {
         // the arc's midpoint lands its dense end on the swing's start.
         nodes.telegraph.zRotation =
             (attack.telegraphStartAngle + attack.telegraphEndAngle) / 2
+        // Mirroring across the arc's own axis swaps which edge is dense
+        // without a second texture: the ramp is symmetric in everything but
+        // direction, which is the one thing being flipped.
+        nodes.telegraph.yScale = attack.isReversed ? -1 : 1
 
         // Ground the blade has already crossed is safe, so the warning is
         // clipped to what it has not reached yet and the swing appears to
         // push it along. Leaving the full wedge lit through the active phase
         // marked ground that could no longer hurt anyone, which is worse than
         // showing nothing — it teaches the player to distrust the warning.
-        let survivingStart = attack.phase == .telegraph
-            ? attack.telegraphStartAngle
-            : max(attack.telegraphStartAngle, attack.activeEndAngle)
-        nodes.telegraphMask.path = survivingStart < attack.telegraphEndAngle
+        // A reversed blade eats its arc from the far edge inward, so the
+        // ground still to come is on the other side of it.
+        let survivingStart: CGFloat
+        let survivingEnd: CGFloat
+        if attack.phase == .telegraph {
+            survivingStart = attack.telegraphStartAngle
+            survivingEnd = attack.telegraphEndAngle
+        } else if attack.isReversed {
+            survivingStart = attack.telegraphStartAngle
+            survivingEnd = min(attack.telegraphEndAngle, attack.activeStartAngle)
+        } else {
+            survivingStart = max(attack.telegraphStartAngle, attack.activeEndAngle)
+            survivingEnd = attack.telegraphEndAngle
+        }
+        nodes.telegraphMask.path = survivingStart < survivingEnd
             ? sectorPath(
                 reach: attack.reach,
                 startAngle: survivingStart,
-                endAngle: attack.telegraphEndAngle
+                endAngle: survivingEnd
             )
             : CGMutablePath()
 

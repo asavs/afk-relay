@@ -58,9 +58,27 @@ nonisolated enum SweepGeometry {
         return (center - halfArc)...(center + halfArc)
     }
 
+    /// Which way a blade crosses its arc.
+    ///
+    /// Chosen per attack rather than fixed, so the direction has to be read
+    /// each time instead of learned once. Derived from the attack's identity
+    /// rather than drawn at random: the simulation is deterministic, and a
+    /// run must replay identically from the same inputs.
+    static func isReversed(sourceID: Int, activationTick: Int) -> Bool {
+        // A cheap integer mix. Neighbouring ids and adjacent ticks have to
+        // land on different bits, or a row of enemies triggering together
+        // would all swing the same way and the variation would be invisible.
+        var hash = UInt64(bitPattern: Int64(sourceID &* 0x9E37_79B9))
+        hash ^= UInt64(bitPattern: Int64(activationTick &* 0x85EB_CA6B))
+        hash = (hash ^ (hash >> 33)) &* 0xFF51_AFD7_ED55_8CCD
+        hash = (hash ^ (hash >> 33)) &* 0xC4CE_B9FE_1A85_EC53
+        return (hash >> 33) & 1 == 1
+    }
+
     static func activeBladeAngles(
         facing: Vector2,
         age: Double,
+        reversed: Bool = false,
         balance: MVPBalance = .v3
     ) -> ClosedRange<Double> {
         let progress: Double
@@ -75,13 +93,28 @@ nonisolated enum SweepGeometry {
             progress = 1
         }
 
+        return bladeAngles(
+            facing: facing,
+            progress: min(max(progress, 0), 1),
+            reversed: reversed,
+            balance: balance
+        )
+    }
+
+    private static func bladeAngles(
+        facing: Vector2,
+        progress: Double,
+        reversed: Bool,
+        balance: MVPBalance
+    ) -> ClosedRange<Double> {
         let telegraph = telegraphAngles(facing: facing, balance: balance)
         let bladeWidth = radians(balance.sweepBladeDegrees)
         let bladeHalf = bladeWidth / 2
-        let center = telegraph.lowerBound
-            + bladeHalf
-            + (telegraph.upperBound - telegraph.lowerBound - bladeWidth)
-                * min(max(progress, 0), 1)
+        let travel = telegraph.upperBound - telegraph.lowerBound - bladeWidth
+        // A reversed blade starts at the far edge and runs back, so the same
+        // progress measures the same distance travelled either way.
+        let travelled = reversed ? (1 - progress) : progress
+        let center = telegraph.lowerBound + bladeHalf + travel * travelled
         return (center - bladeHalf)...(center + bladeHalf)
     }
 
@@ -91,6 +124,7 @@ nonisolated enum SweepGeometry {
         sourceCenter: Vector2,
         facing: Vector2,
         age: Double,
+        reversed: Bool = false,
         balance: MVPBalance = .v3
     ) -> Bool {
         guard case .active = phase(at: age, balance: balance) else {
@@ -100,6 +134,7 @@ nonisolated enum SweepGeometry {
         let blade = activeBladeAngles(
             facing: facing,
             age: age,
+            reversed: reversed,
             balance: balance
         )
         return circleIntersectsSector(
@@ -120,6 +155,7 @@ nonisolated enum SweepGeometry {
         facing: Vector2,
         fromAge: Double,
         throughAge: Double,
+        reversed: Bool = false,
         balance: MVPBalance = .v3
     ) -> Bool {
         let activeStart = balance.sweepTelegraphDuration
@@ -138,19 +174,25 @@ nonisolated enum SweepGeometry {
         let startBlade = bladeAnglesAtInclusiveActiveAge(
             facing: facing,
             age: clippedStart,
+            reversed: reversed,
             balance: balance
         )
         let endBlade = bladeAnglesAtInclusiveActiveAge(
             facing: facing,
             age: clippedEnd,
+            reversed: reversed,
             balance: balance
         )
+        // A reversed blade ends at a lower angle than it started, so the
+        // ground it crossed is the span between them either way round.
+        let sweptLower = min(startBlade.lowerBound, endBlade.lowerBound)
+        let sweptUpper = max(startBlade.upperBound, endBlade.upperBound)
         return circleIntersectsSector(
             center: targetCenter,
             radius: targetRadius,
             origin: sourceCenter,
             reach: balance.sweepReach,
-            angles: startBlade.lowerBound...endBlade.upperBound
+            angles: sweptLower...sweptUpper
         )
     }
 
@@ -172,6 +214,7 @@ nonisolated enum SweepGeometry {
     private static func bladeAnglesAtInclusiveActiveAge(
         facing: Vector2,
         age: Double,
+        reversed: Bool,
         balance: MVPBalance
     ) -> ClosedRange<Double> {
         let activeStart = balance.sweepTelegraphDuration
@@ -179,14 +222,12 @@ nonisolated enum SweepGeometry {
             age - activeStart,
             balance.sweepActiveDuration
         )
-        let telegraph = telegraphAngles(facing: facing, balance: balance)
-        let bladeWidth = radians(balance.sweepBladeDegrees)
-        let halfWidth = bladeWidth / 2
-        let center = telegraph.lowerBound
-            + halfWidth
-            + (telegraph.upperBound - telegraph.lowerBound - bladeWidth)
-                * progress
-        return (center - halfWidth)...(center + halfWidth)
+        return bladeAngles(
+            facing: facing,
+            progress: progress,
+            reversed: reversed,
+            balance: balance
+        )
     }
 
     private static func circleIntersectsSector(

@@ -88,6 +88,10 @@ nonisolated struct ArenaEntity: Equatable, Sendable {
 nonisolated struct ArenaAttack: Equatable, Sendable {
     let sourceID: Int
     let facing: Vector2
+    /// Whether this blade crosses its arc backwards. Fixed for the life of
+    /// the attack and settled when it is thrown, so the direction a player
+    /// reads during the telegraph is the direction that lands.
+    var isReversed = false
     var age: Double
     var playerTravelDistance: Double
     var hitIDs: Set<Int>
@@ -140,6 +144,7 @@ nonisolated enum ArenaAttackResolver {
                         facing: attack.facing,
                         fromAge: fromAge,
                         throughAge: attack.age,
+                        reversed: attack.isReversed,
                         balance: balance
                     )
                 }
@@ -149,6 +154,7 @@ nonisolated enum ArenaAttackResolver {
                     sourceCenter: source.position,
                     facing: attack.facing,
                     age: attack.age,
+                    reversed: attack.isReversed,
                     balance: balance
                 )
             }
@@ -341,6 +347,12 @@ nonisolated struct ArenaSimulation: Sendable {
                     .init(
                         sourceID: enemy.id,
                         facing: facing,
+                        // Settled once, from the attack's identity rather
+                        // than an RNG, so a run replays identically.
+                        isReversed: SweepGeometry.isReversed(
+                            sourceID: enemy.id,
+                            activationTick: Int((elapsed * 60).rounded())
+                        ),
                         age: 0,
                         playerTravelDistance: 0,
                         hitIDs: []

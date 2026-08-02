@@ -18,6 +18,9 @@ struct ArenaRenderAttack: Identifiable, Equatable, Sendable {
     let telegraphEndAngle: CGFloat
     let activeStartAngle: CGFloat
     let activeEndAngle: CGFloat
+    /// Whether the blade crosses its arc from the high angle down. The
+    /// warning's gradient has to point the way the blade actually goes.
+    let isReversed: Bool
     let phase: Phase
     let phaseProgress: Double
 
@@ -30,6 +33,7 @@ struct ArenaRenderAttack: Identifiable, Equatable, Sendable {
         telegraphEndAngle: CGFloat,
         activeStartAngle: CGFloat,
         activeEndAngle: CGFloat,
+        isReversed: Bool = false,
         phase: Phase,
         phaseProgress: Double
     ) {
@@ -41,6 +45,7 @@ struct ArenaRenderAttack: Identifiable, Equatable, Sendable {
         self.telegraphEndAngle = telegraphEndAngle
         self.activeStartAngle = activeStartAngle
         self.activeEndAngle = activeEndAngle
+        self.isReversed = isReversed
         self.phase = phase
         self.phaseProgress = min(max(phaseProgress, 0), 1)
     }

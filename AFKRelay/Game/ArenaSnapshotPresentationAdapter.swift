@@ -106,6 +106,7 @@ enum ArenaSnapshotPresentationAdapter {
         let blade = SweepGeometry.activeBladeAngles(
             facing: attack.facing,
             age: attack.age,
+            reversed: attack.isReversed,
             balance: balance
         )
         let phase: ArenaRenderAttack.Phase
@@ -140,6 +141,7 @@ enum ArenaSnapshotPresentationAdapter {
             telegraphEndAngle: telegraph.upperBound,
             activeStartAngle: blade.lowerBound,
             activeEndAngle: blade.upperBound,
+            isReversed: attack.isReversed,
             phase: phase,
             phaseProgress: clampedProgress
         )

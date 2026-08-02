@@ -185,3 +185,111 @@ struct SweepGeometryTests {
         )
     }
 }
+
+@Suite("Sweep direction")
+struct SweepDirectionTests {
+    @Test("A reversed blade starts where a forward one finishes")
+    func reversedStartsAtFarEdge() {
+        let balance = MVPBalance.v3
+        let facing = Vector2(x: 1, y: 0)
+        let activeStart = balance.sweepTelegraphDuration
+        let activeEnd = activeStart + balance.sweepActiveDuration
+
+        let forwardStart = SweepGeometry.activeBladeAngles(
+            facing: facing,
+            age: activeStart,
+            reversed: false,
+            balance: balance
+        )
+        let reversedEnd = SweepGeometry.activeBladeAngles(
+            facing: facing,
+            age: activeEnd,
+            reversed: true,
+            balance: balance
+        )
+        #expect(abs(forwardStart.lowerBound - reversedEnd.lowerBound) < 0.000_001)
+
+        let forwardEnd = SweepGeometry.activeBladeAngles(
+            facing: facing,
+            age: activeEnd,
+            reversed: false,
+            balance: balance
+        )
+        let reversedStart = SweepGeometry.activeBladeAngles(
+            facing: facing,
+            age: activeStart,
+            reversed: true,
+            balance: balance
+        )
+        #expect(abs(forwardEnd.upperBound - reversedStart.upperBound) < 0.000_001)
+    }
+
+    /// The direction has to change what the swing hits, or it is decoration.
+    @Test("Direction decides who is caught early in the swing")
+    func directionChangesEarlyHits() {
+        let balance = MVPBalance.v3
+        let source = Vector2(x: 0, y: 0)
+        let facing = Vector2(x: 1, y: 0)
+        let earlyAge = balance.sweepTelegraphDuration + 0.02
+
+        // Two targets parked at opposite edges of the arc.
+        let halfArc = balance.sweepArcDegrees / 2 * .pi / 180
+        let radius = balance.sweepReach * 0.6
+        let lowEdge = Vector2(x: cos(-halfArc) * radius, y: sin(-halfArc) * radius)
+        let highEdge = Vector2(x: cos(halfArc) * radius, y: sin(halfArc) * radius)
+
+        func caught(_ target: Vector2, reversed: Bool) -> Bool {
+            SweepGeometry.contains(
+                targetCenter: target,
+                targetRadius: balance.enemyRadius,
+                sourceCenter: source,
+                facing: facing,
+                age: earlyAge,
+                reversed: reversed,
+                balance: balance
+            )
+        }
+
+        #expect(caught(lowEdge, reversed: false))
+        #expect(!caught(highEdge, reversed: false))
+        #expect(caught(highEdge, reversed: true))
+        #expect(!caught(lowEdge, reversed: true))
+    }
+
+    /// The simulation must replay identically, so direction cannot be random.
+    @Test("Direction is fixed by the attack's identity")
+    func directionIsDeterministic() {
+        for sourceID in 0..<40 {
+            for tick in stride(from: 0, to: 400, by: 37) {
+                let first = SweepGeometry.isReversed(
+                    sourceID: sourceID,
+                    activationTick: tick
+                )
+                let second = SweepGeometry.isReversed(
+                    sourceID: sourceID,
+                    activationTick: tick
+                )
+                #expect(first == second)
+            }
+        }
+    }
+
+    @Test("Both directions actually occur, and neither dominates")
+    func directionsAreMixed() {
+        var reversedCount = 0
+        var total = 0
+        for sourceID in 1...60 {
+            for tick in stride(from: 0, to: 600, by: 13) {
+                total += 1
+                if SweepGeometry.isReversed(sourceID: sourceID, activationTick: tick) {
+                    reversedCount += 1
+                }
+            }
+        }
+        // A hash that clumps would leave long stretches swinging one way and
+        // the variation would never be felt.
+        let share = Double(reversedCount) / Double(total)
+        #expect(share > 0.4)
+        #expect(share < 0.6)
+    }
+}
