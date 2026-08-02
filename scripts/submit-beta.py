@@ -163,13 +163,21 @@ def find_build(app_id, tag):
 
 
 def find_group(app_id, name):
-    """The group's id and whether it is internal, which decides the rest."""
+    """The group's id, whether it is internal, and whether it takes builds.
+
+    A group set to receive every build refuses to be handed one: Apple
+    answers the assignment with ENTITY_UNPROCESSABLE rather than treating it
+    as the no-op it is. Knowing that up front is the difference between
+    "already shipped" and a failed run.
+    """
     status, payload = api(
         "GET", f"/v1/betaGroups?filter%5Bapp%5D={app_id}&limit=50")
     for group in expect(status, payload, 200).get("data", []):
         attributes = group["attributes"]
         if attributes.get("name") == name:
-            return group["id"], bool(attributes.get("isInternalGroup"))
+            return (group["id"],
+                    bool(attributes.get("isInternalGroup")),
+                    bool(attributes.get("hasAccessToAllBuilds")))
     die(f'no beta group named "{name}". Create it in App Store '
         "Connect, or set ASC_BETA_GROUP.")
 
@@ -296,7 +304,7 @@ def main():
     app_id = find_app(bundle_identifier())
     build_id = find_build(app_id, tag)
     group_name = os.environ.get("ASC_BETA_GROUP", "beta")
-    group_id, internal = find_group(app_id, group_name)
+    group_id, internal, all_builds = find_group(app_id, group_name)
 
     kind = "internal" if internal else "external"
     print(f"app {app_id} · build {tag} ({build_id}) · {kind} group {group_name}")
@@ -310,8 +318,12 @@ def main():
     if not internal:
         update_review_detail(app_id, notes)
         print("review detail: updated")
-    attach_to_group(group_id, build_id)
-    print(f"attached to {group_name}")
+
+    if all_builds:
+        print(f"{group_name} already receives every build; nothing to attach")
+    else:
+        attach_to_group(group_id, build_id)
+        print(f"attached to {group_name}")
 
     if internal:
         print("\nInternal testers can install as soon as the build finishes "
