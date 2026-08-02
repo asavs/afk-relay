@@ -9,6 +9,7 @@ final class ArenaRenderer {
     let rootNode = SKNode()
 
     private let catalog: any ArenaPresentationCatalog
+    private let telegraphTextures = TelegraphTextureCache()
     private let gridNode = SKShapeNode()
     private let boundaryNode = SKShapeNode()
     private let attackLayer = SKNode()
@@ -368,22 +369,22 @@ final class ArenaRenderer {
 
     private func makeAttackNodes(for attack: ArenaRenderAttack) -> AttackNodes {
         let container = SKNode()
-        let telegraph = SKShapeNode()
+        let telegraph = SKSpriteNode()
         let active = SKShapeNode()
-        let cueLines = SKShapeNode()
         let identifier = makeLabel()
         let timing = makeLabel()
 
         container.name = "attack.\(attack.id)"
         telegraph.name = "attack.telegraph"
         active.name = "attack.active"
-        cueLines.name = "attack.non-color-cues"
         identifier.name = "attack.identifier"
         timing.name = "attack.timing"
 
+        telegraph.zPosition = -20
+        telegraph.colorBlendFactor = 1
+
         container.addChild(telegraph)
         container.addChild(active)
-        container.addChild(cueLines)
         container.addChild(identifier)
         container.addChild(timing)
         attackLayer.addChild(container)
@@ -392,7 +393,6 @@ final class ArenaRenderer {
             container: container,
             telegraph: telegraph,
             active: active,
-            cueLines: cueLines,
             identifier: identifier,
             timing: timing
         )
@@ -408,13 +408,28 @@ final class ArenaRenderer {
         let activeStyle = catalog.style(for: .attackActive, accessibility: accessibility)
 
         nodes.container.position = attack.origin
-        nodes.telegraph.path = sectorPath(
-            reach: attack.reach,
-            startAngle: attack.telegraphStartAngle,
-            endAngle: attack.telegraphEndAngle
+
+        // The blade always travels from the telegraph's start angle to its
+        // end angle. Nothing drew that before, so a wedge that reads
+        // identically at both ends was hiding the one fact the player most
+        // needs. The fill is densest where the blade begins and thins toward
+        // where it lands, and the outline is left open on that leading side,
+        // so direction survives both greyscale and Differentiate Without
+        // Colour — it is carried by shape and density, not hue.
+        let span = attack.telegraphEndAngle - attack.telegraphStartAngle
+        nodes.telegraph.texture = telegraphTextures.texture(
+            for: .sweep(arcDegrees: Double(span) * 180 / .pi),
+            increaseContrast: accessibility.increaseContrast
         )
-        apply(telegraphStyle, to: nodes.telegraph)
-        nodes.telegraph.zPosition = -20
+        // The texture draws its own radius as a fraction of its side, so the
+        // sprite is sized from that rather than from the reach directly.
+        let extent = attack.reach / TelegraphTextureCache.radiusFraction
+        nodes.telegraph.size = CGSize(width: extent, height: extent)
+        nodes.telegraph.color = telegraphStyle.fillColor
+        // The texture is drawn centred on its own zero angle, so rotating to
+        // the arc's midpoint lands its dense end on the swing's start.
+        nodes.telegraph.zRotation =
+            (attack.telegraphStartAngle + attack.telegraphEndAngle) / 2
 
         nodes.active.path = sectorPath(
             reach: attack.reach,
@@ -448,13 +463,6 @@ final class ArenaRenderer {
             case .recovery: 0.2
             }
         }
-
-        nodes.cueLines.path = attackCuePath(for: attack)
-        nodes.cueLines.strokeColor = attack.phase == .active
-            ? activeStyle.strokeColor
-            : telegraphStyle.strokeColor
-        nodes.cueLines.lineWidth = max(3, telegraphStyle.lineWidth * 0.75)
-        nodes.cueLines.zPosition = -9
 
         nodes.identifier.text = "\(attack.id) • \(attack.sourceEntityID)"
         nodes.identifier.position = CGPoint(x: 0, y: attack.reach + 24)
@@ -589,21 +597,6 @@ final class ArenaRenderer {
         return path
     }
 
-    private func attackCuePath(for attack: ArenaRenderAttack) -> CGPath {
-        let path = CGMutablePath()
-        let middle = (attack.telegraphStartAngle + attack.telegraphEndAngle) / 2
-        let inset = attack.reach * 0.18
-
-        for angle in [
-            attack.telegraphStartAngle,
-            middle,
-            attack.telegraphEndAngle,
-        ] {
-            path.move(to: point(distance: inset, angle: angle))
-            path.addLine(to: point(distance: attack.reach, angle: angle))
-        }
-        return path
-    }
 
     private func impactPath(for kind: ArenaRenderImpact.Kind) -> CGPath {
         let path = CGMutablePath()
@@ -714,24 +707,25 @@ private extension ArenaRenderer {
 
     final class AttackNodes {
         let container: SKNode
-        let telegraph: SKShapeNode
+        /// One sprite carrying the whole warning — gradient and tapering arc
+        /// baked into a cached texture, rotated to face the swing. The shape
+        /// never varies at runtime, so drawing it as geometry every frame was
+        /// paying per-attack for something constant.
+        let telegraph: SKSpriteNode
         let active: SKShapeNode
-        let cueLines: SKShapeNode
         let identifier: SKLabelNode
         let timing: SKLabelNode
 
         init(
             container: SKNode,
-            telegraph: SKShapeNode,
+            telegraph: SKSpriteNode,
             active: SKShapeNode,
-            cueLines: SKShapeNode,
             identifier: SKLabelNode,
             timing: SKLabelNode
         ) {
             self.container = container
             self.telegraph = telegraph
             self.active = active
-            self.cueLines = cueLines
             self.identifier = identifier
             self.timing = timing
         }
