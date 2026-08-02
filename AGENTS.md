@@ -82,6 +82,14 @@ GitHub Wiki before making behavior or architecture changes.
 - Build and upload with `./scripts/release.sh <tag> <build-number>`. It builds
   the tag from a scratch worktree, so the archive matches the tag rather than
   the working tree.
+- Put a build in front of external testers with
+  `./scripts/submit-beta.py <tag> <what-to-test-file>`. Uploading alone queues
+  nothing: external testing needs the build attached to an external group and
+  submitted for review. The script is safe to re-run, so tester notes can be
+  corrected after submitting.
+- What to test is a file because it differs every build. Contact details,
+  feedback address, and the app-level description come from the environment
+  beside the signing key — they are personal, and this repository is public.
 - Record the ledger row after the release is cut, never before. A decision may
   be accepted, implemented, demonstrated, and reverted inside one release —
   `ADR-0017` was — so a forward-looking claim about where work will ship is a
