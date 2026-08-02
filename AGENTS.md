@@ -67,6 +67,12 @@ GitHub Wiki before making behavior or architecture changes.
 - A green simulator run is not device evidence, and neither is evidence of a
   visual change. Changes to appearance need screenshots and the owner's
   approval before they are committed.
+- Run the device plan with `./scripts/device-test.sh`. It unlocks the signing
+  keychain and passes the App Store Connect key so provisioning updates
+  headlessly. Signing over SSH cannot use the login keychain: keychain unlock
+  does not cross macOS security sessions, and macOS will not export an
+  identity to a non-GUI session either, so signing lives in a dedicated
+  keychain created once by `./scripts/setup-signing-keychain.py`.
 
 ## Shipping
 
