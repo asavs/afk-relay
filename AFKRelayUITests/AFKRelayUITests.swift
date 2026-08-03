@@ -164,9 +164,7 @@ nonisolated final class AFKRelayUITests: XCTestCase {
         XCTAssertTrue(joystick.waitForExistence(timeout: 5))
 
         // Let rapid spawning reach the 20-enemy cap before measuring.
-        joystick.coordinate(
-            withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)
-        ).press(forDuration: 12)
+        steer(joystick, hold: 1.5)
 
         let options = XCTMeasureOptions()
         options.iterationCount = 1
@@ -179,9 +177,7 @@ nonisolated final class AFKRelayUITests: XCTestCase {
         ) {
             // Sustained movement against the capped swarm with all
             // diagnostics layers rendering.
-            joystick.coordinate(
-                withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)
-            ).press(forDuration: 20)
+            steer(joystick, hold: 2.5)
         }
 
         // The diagnostics overlay reports the rendered frame rate; require
@@ -209,6 +205,34 @@ nonisolated final class AFKRelayUITests: XCTestCase {
     }
 
     // MARK: - Helpers
+
+    /// Walks the joystick around its rim so the player travels a circuit.
+    ///
+    /// Holding one heading drives the player into a wall, where movement
+    /// stops and the swarm piles onto a single side — a quieter arena than
+    /// the game ever actually asks for, and a poor thing to measure. A
+    /// circuit keeps the player travelling and the enemies distributed
+    /// around them.
+    ///
+    /// Each heading is its own press because XCUITest cannot hold one touch
+    /// along a path. The player coasts through the gaps rather than stopping
+    /// dead, so it still reads as a loop.
+    @MainActor
+    private func steer(
+        _ joystick: XCUIElement,
+        headings: Int = 8,
+        hold: TimeInterval
+    ) {
+        for step in 0..<headings {
+            let angle = (Double(step) / Double(headings)) * 2 * .pi
+            joystick.coordinate(
+                withNormalizedOffset: CGVector(
+                    dx: 0.5 + 0.4 * cos(angle),
+                    dy: 0.5 + 0.4 * sin(angle)
+                )
+            ).press(forDuration: hold)
+        }
+    }
 
     @MainActor
     private func element(
