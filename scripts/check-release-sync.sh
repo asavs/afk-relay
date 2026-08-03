@@ -137,8 +137,12 @@ check_github_releases() {
         warn "gh not installed; skipping GitHub release checks"
         return
     fi
-    if ! gh auth status >/dev/null 2>&1; then
-        warn "gh not authenticated; skipping GitHub release checks"
+    # Ask whether a call works, not whether every stored account is healthy.
+    # gh auth status fails if any account is broken — a keychain token this
+    # session cannot read counts — so it reported "not authenticated" while a
+    # working GH_TOKEN sat right beside it, and these checks silently skipped.
+    if ! gh api user >/dev/null 2>&1; then
+        warn "gh cannot reach GitHub; skipping GitHub release checks"
         return
     fi
 
