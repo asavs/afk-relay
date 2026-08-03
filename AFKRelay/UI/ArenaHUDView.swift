@@ -27,83 +27,69 @@ struct ArenaStatusBarHUD: View {
     /// beside the clock, the way system indicators ride there.
     var onPause: (@MainActor () -> Void)? = nil
 
-    /// The width of one "ear" — the strip between a screen edge and the
-    /// centered sensor cutout. Apple publishes no API for cutout frames,
-    /// so the class is inferred from the measured inset: the tall band is
-    /// the Dynamic Island (~125pt wide), the short band the notch
-    /// (~210pt), anything else has no cutout. iOS centers its status
-    /// items inside these ears; so do we.
-    private var earWidth: CGFloat? {
+    /// The approximate width of the centered sensor housing. Apple
+    /// publishes no API for cutout frames, so the class is inferred from
+    /// the measured inset: the tall band is the Dynamic Island (~125pt
+    /// wide), the short band the notch (~210pt), anything else has no
+    /// cutout.
+    ///
+    /// Only the cutout is a constant. The ears are whatever the display
+    /// has left over, so a narrow phone gets narrow ears rather than
+    /// overflowing ones — the previous fixed 90pt notch ear assumed a
+    /// 414pt display and did not survive a 375pt one, where 90 + 210 + 90
+    /// exceeds the screen and the clock wrapped to two lines.
+    private var cutoutWidth: CGFloat? {
         if topInset >= 54 {
-            134
+            125
         } else if topInset >= 44 {
-            90
+            210
         } else {
             nil
         }
     }
 
+    /// Cutout-free displays get generous edge margins; a cutout display
+    /// has little enough room that the items sit closer to the corners,
+    /// which is also where iOS puts its own.
+    private var edgeMargin: CGFloat {
+        cutoutWidth == nil
+            ? AFKRelayUIStyle.generousSpacing + AFKRelayUIStyle.compactSpacing
+            : AFKRelayUIStyle.compactSpacing
+    }
+
     var body: some View {
         HStack(spacing: 0) {
-            HStack(spacing: 5) {
-                // A mirror of the pause slot: the clock stays dead-center
-                // in the ear — native position — whether pause rides
-                // beside it or not.
-                if onPause != nil {
-                    Color.clear.frame(width: 32, height: 1)
-                }
-
-                clock
-
-                if let onPause {
-                    Button(action: onPause) {
-                        Image(systemName: "pause.fill")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 32, height: 44)
-                            .contentShape(.rect)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Pause")
-                    .accessibilityIdentifier("pause-run")
-                }
+            // Each ear takes only the width its content needs and hugs its
+            // own edge; the cutout is protected by the spacer between them
+            // rather than by pinning the ears to a guessed width.
+            ViewThatFits(in: .horizontal) {
+                leadingItems(balanced: true)
+                leadingItems(balanced: false)
             }
-            .frame(width: earWidth)
+            .frame(maxWidth: cutoutWidth == nil ? nil : .infinity)
 
-            Spacer(minLength: 0)
+            // Beside a cutout the two ears split what is left evenly and
+            // centre their contents in it, which is where iOS seats its
+            // own. The width is divided rather than declared, so the same
+            // rule holds on a 375pt display and a 440pt one.
+            if let cutoutWidth {
+                Color.clear.frame(width: cutoutWidth, height: 1)
+            } else {
+                Spacer(minLength: 0)
+            }
 
             // The right ear keeps the system's own ordering — cellular,
-            // Wi-Fi, battery — as mana, health, stamina.
-            HStack(spacing: 6) {
-                // The future meditation-powered mana resource in the
-                // cellular-bars slot; it will hollow out as it depletes,
-                // exactly like the heart. On trial for layout; the
-                // resource does not exist yet, so it reads full.
-                DrainingGlyph(
-                    hollow: "bubbles.and.sparkles",
-                    filled: "bubbles.and.sparkles.fill",
-                    fraction: 1,
-                    tint: AFKRelayUIStyle.mana
-                )
-
-                heart
-
-                switch context {
-                case .run(let model):
-                    StaminaBatteryGauge(fraction: model.staminaFraction)
-                case .home(let availableTokens, let dailyAverageSteps):
-                    // A "full" charge is the player's own HealthKit
-                    // trailing-30-day daily average; with no baseline the
-                    // case reads full whenever anything is banked.
-                    StaminaBatteryGauge(
-                        fraction: dailyAverageSteps > 0
-                            ? Double(availableTokens) / Double(dailyAverageSteps)
-                            : (availableTokens > 0 ? 1 : 0),
-                        label: availableTokens.formatted()
-                    )
-                }
+            // Wi-Fi, battery — as mana, health, stamina. All three seat on
+            // every supported display at default type size, the way the
+            // system's own three do; the reduced variant is a safety net
+            // for accessibility type sizes, not an expected layout. If it
+            // ever engages by default, the indicators have outgrown the
+            // ear again and should be slimmed rather than dropped.
+            ViewThatFits(in: .horizontal) {
+                trailingItems(includingMana: true)
+                trailingItems(includingMana: false)
             }
-            .frame(width: earWidth)
+            .frame(maxWidth: cutoutWidth == nil ? nil : .infinity)
             // One element: VoiceOver reads the resource state in a
             // breath, and the battery fill's value would otherwise be
             // unreachable.
@@ -111,13 +97,7 @@ struct ArenaStatusBarHUD: View {
             .accessibilityLabel("Run status")
             .accessibilityValue(accessibilitySummary)
         }
-        // Cutout-free displays get plain edge margins instead of ears.
-        .padding(
-            .horizontal,
-            earWidth == nil
-                ? AFKRelayUIStyle.generousSpacing + AFKRelayUIStyle.compactSpacing
-                : 0
-        )
+        .padding(.horizontal, edgeMargin)
         .font(.body.weight(.semibold))
         .foregroundStyle(.white)
         .accessibilityElement(children: .contain)
@@ -141,6 +121,74 @@ struct ArenaStatusBarHUD: View {
         case .home(let availableTokens, _):
             return "\(availableTokens) steps banked"
         }
+    }
+
+    /// The left ear. `balanced` adds a mirror of the pause slot so the
+    /// clock sits dead-centre between them, which is where iOS puts its
+    /// own — a courtesy the narrowest displays cannot afford, so
+    /// `ViewThatFits` drops it before anything legible is lost.
+    private func leadingItems(balanced: Bool) -> some View {
+        HStack(spacing: 5) {
+            if balanced, onPause != nil {
+                Color.clear.frame(width: 32, height: 1)
+            }
+
+            // The clock holds one line at its natural width no matter how
+            // little is offered. Wrapping was the original symptom: a
+            // survival timer folded into "0:" above an ellipsis.
+            clock
+                .lineLimit(1)
+                .fixedSize()
+
+            if let onPause {
+                Button(action: onPause) {
+                    Image(systemName: "pause.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 32, height: 44)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Pause")
+                .accessibilityIdentifier("pause-run")
+            }
+        }
+    }
+
+    /// The right ear, in the system's indicator order.
+    private func trailingItems(includingMana: Bool) -> some View {
+        HStack(spacing: 4) {
+            // The future meditation-powered mana resource in the
+            // cellular-bars slot; it will hollow out as it depletes,
+            // exactly like the heart. On trial for layout; the resource
+            // does not exist yet, so it reads full.
+            if includingMana {
+                DrainingGlyph(
+                    hollow: "bubbles.and.sparkles",
+                    filled: "bubbles.and.sparkles.fill",
+                    fraction: 1,
+                    tint: AFKRelayUIStyle.mana
+                )
+            }
+
+            heart
+
+            switch context {
+            case .run(let model):
+                StaminaBatteryGauge(fraction: model.staminaFraction)
+            case .home(let availableTokens, let dailyAverageSteps):
+                // A "full" charge is the player's own HealthKit
+                // trailing-30-day daily average; with no baseline the
+                // case reads full whenever anything is banked.
+                StaminaBatteryGauge(
+                    fraction: dailyAverageSteps > 0
+                        ? Double(availableTokens) / Double(dailyAverageSteps)
+                        : (availableTokens > 0 ? 1 : 0),
+                    label: availableTokens.formatted()
+                )
+            }
+        }
+        .fixedSize()
     }
 
     @ViewBuilder
@@ -217,7 +265,7 @@ private struct DrainingGlyph: View {
                     }
                 }
         }
-        .font(.subheadline.weight(.semibold))
+        .font(.footnote.weight(.semibold))
     }
 
     private var clampedFraction: Double {
@@ -245,7 +293,7 @@ private struct StaminaBatteryGauge: View {
                         .padding(.horizontal, 5)
                 }
             }
-            .frame(minWidth: 31, minHeight: 15)
+            .frame(minWidth: 26, minHeight: 14)
             .background(alignment: .leading) {
                 GeometryReader { proxy in
                     RoundedRectangle(cornerRadius: 3)
