@@ -172,21 +172,55 @@ check_ledger() {
     done
 }
 
-# Design decisions recorded after the newest release are not yet accounted for
-# by any ledger row. That is normal mid-cycle; it is reported so the next
-# release remembers to claim them.
+# Design decisions no ledger row accounts for. That is normal mid-cycle; it is
+# reported so the next release remembers to claim them.
+#
+# Rows cite revisions, so ask the rows rather than the clock. A date window
+# called a release's own governance unaccounted for the moment it was
+# recorded: the revision the new row cites is necessarily newer than the tag
+# that row describes, so cutting a release always warned about the release
+# just cut.
 check_unledgered_wiki_work() {
     [ -n "$wiki_root" ] || return 0
-    latest=$(latest_release_tag)
-    [ -n "$latest" ] || return 0
+    [ -f "$ledger" ] || return 0
 
-    tag_date=$(git -C "$app_root" log -1 --format=%cI "$latest" 2>/dev/null || echo "")
-    [ -n "$tag_date" ] || return 0
+    # Stop at the newest revision any row already claims — everything older
+    # belongs to a shipped release and was accounted for when it was cut.
+    boundary=""
+    for hash in $(git -C "$wiki_root" log --format=%h master 2>/dev/null || echo ""); do
+        if grep -q "\`$hash\`" "$ledger"; then
+            boundary="$hash"
+            break
+        fi
+    done
 
-    pending=$(git -C "$wiki_root" log --since="$tag_date" --format='%h %s' master 2>/dev/null || echo "")
+    if [ -n "$boundary" ]; then
+        range="$boundary..master"
+    else
+        range="master"
+    fi
+
+    pending=""
+    for hash in $(git -C "$wiki_root" log --format=%h "$range" 2>/dev/null || echo ""); do
+        # A row may cite revisions out of order, so test each one rather than
+        # trusting the boundary to have found them all.
+        if grep -q "\`$hash\`" "$ledger"; then
+            continue
+        fi
+        # A commit that only writes the ledger is bookkeeping, not governance.
+        # It cannot cite itself, so it would otherwise warn forever.
+        touched=$(git -C "$wiki_root" show --pretty=format: --name-only "$hash" \
+            | grep -v '^$' | sort -u)
+        if [ "$touched" = "implementation-status.md" ]; then
+            continue
+        fi
+        pending="$pending        $hash $(git -C "$wiki_root" log -1 --format=%s "$hash")
+"
+    done
+
     if [ -n "$pending" ]; then
-        warn "wiki commits since $latest are not in any ledger row:"
-        echo "$pending" | sed 's/^/        /'
+        warn "wiki commits not claimed by any ledger row:"
+        printf '%s' "$pending"
     else
         pass "no unledgered wiki work"
     fi
