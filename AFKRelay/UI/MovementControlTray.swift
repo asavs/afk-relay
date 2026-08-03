@@ -53,7 +53,7 @@ private struct WarningChipBackground: ViewModifier {
         if contrast == .increased {
             content.background(AFKRelayUIStyle.panel, in: .capsule)
         } else {
-            content.glassEffect()
+            content.afkChromeBackground(in: .capsule)
         }
     }
 }

@@ -70,7 +70,7 @@ struct StepOnboardingView: View {
                         systemImage: "arrow.up.forward.app",
                         action: onOpenSettings
                     )
-                    .buttonStyle(.glass)
+                    .afkChromeButtonStyle()
                     .controlSize(.large)
                     // Identified rather than matched by label, so wording can
                     // change without breaking the device scenarios.
@@ -94,7 +94,7 @@ struct StepOnboardingView: View {
                         .frame(maxWidth: .infinity, minHeight: AFKRelayUIStyle.minimumTapTarget)
                     }
                 }
-                .buttonStyle(.glassProminent)
+                .afkChromeButtonStyle(prominent: true)
                 .disabled(refreshState == .refreshing)
                 .accessibilityIdentifier("connect-steps")
             }

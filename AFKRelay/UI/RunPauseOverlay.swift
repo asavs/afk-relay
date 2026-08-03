@@ -18,7 +18,7 @@ struct RunPauseOverlay: View {
                         .accessibilityAddTraits(.isHeader)
 
                     Button("Resume", systemImage: "play.fill", action: onResume)
-                        .buttonStyle(.glassProminent)
+                        .afkChromeButtonStyle(prominent: true)
                         .controlSize(.large)
 
                     Button(
@@ -27,13 +27,13 @@ struct RunPauseOverlay: View {
                         role: .destructive,
                         action: onEndRun
                     )
-                    .buttonStyle(.glass)
+                    .afkChromeButtonStyle(destructiveTint: AFKRelayUIStyle.enemy)
                     .controlSize(.large)
                     .tint(AFKRelayUIStyle.enemy)
                     .accessibilityIdentifier("end-run")
 
                     Button("Settings", systemImage: "gearshape", action: onShowSettings)
-                        .buttonStyle(.glass)
+                        .afkChromeButtonStyle()
                         .controlSize(.large)
                 }
             }

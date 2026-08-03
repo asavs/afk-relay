@@ -10,8 +10,9 @@ struct DiagnosticPanel<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        // Liquid Glass keeps every card native to iOS 26; increased
-        // contrast gets a solid opaque fill instead of translucency.
+        // Adaptive chrome keeps every card native to the running iOS;
+        // increased contrast gets a solid opaque fill instead of
+        // translucency, whichever material the OS would otherwise use.
         if contrast == .increased {
             content
                 .padding(AFKRelayUIStyle.standardSpacing)
@@ -26,8 +27,7 @@ struct DiagnosticPanel<Content: View>: View {
         } else {
             content
                 .padding(AFKRelayUIStyle.standardSpacing)
-                .glassEffect(
-                    .regular,
+                .afkChromeBackground(
                     in: .rect(cornerRadius: AFKRelayUIStyle.panelCornerRadius)
                 )
         }

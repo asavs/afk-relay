@@ -256,7 +256,7 @@ struct AppShellView: View {
                         role: .destructive,
                         action: { showsResetConfirmation = true }
                     )
-                    .buttonStyle(.glassProminent)
+                    .afkChromeButtonStyle(prominent: true)
                     .controlSize(.large)
                     .confirmationDialog(
                         "Reset the step bank?",

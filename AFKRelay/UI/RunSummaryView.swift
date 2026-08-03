@@ -97,7 +97,7 @@ struct RunSummaryView: View {
                     .font(.headline)
                     .padding(.horizontal, AFKRelayUIStyle.standardSpacing)
                 }
-                    .buttonStyle(.glassProminent)
+                    .afkChromeButtonStyle(prominent: true)
                     .accessibilityLabel("Run Again")
                     .accessibilityIdentifier("run-again")
 
