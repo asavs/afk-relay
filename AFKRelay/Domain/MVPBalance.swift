@@ -30,6 +30,25 @@ nonisolated struct MVPBalance: Equatable, Sendable {
     /// shooters and leave a run with no counterplay.
     let marksmanCap: Int
 
+    // ADR-0021: chevrons curve in on converging bearings and wait their turn
+    // to swing. The bearings converge rather than spread on purpose — the
+    // player has no attack, so a run is won by bodies staying close enough
+    // that one sweep's arc catches a neighbour.
+
+    /// How much lateral travel is blended into a chevron's pursuit, as a
+    /// fraction of the forward component, before the commit distance.
+    let flankStrength: Double
+    /// Inside this the approach is straight. It exceeds `sweepTriggerDistance`
+    /// so nothing is still turning when it swings: a telegraph thrown by a
+    /// turning body points where the blade will not go.
+    let flankCommitDistance: Double
+    /// How long a chevron waits after a neighbour's sweep begins. Tuned to a
+    /// beat rather than a pause — a body standing in range not attacking
+    /// reads as hesitation if this is long.
+    let sweepStaggerInterval: Double
+    /// How near another sweep's source must be to count as a neighbour.
+    let sweepStaggerRadius: Double
+
     init(
         arenaSize: Vector2,
         playerRadius: Double,
@@ -65,7 +84,11 @@ nonisolated struct MVPBalance: Equatable, Sendable {
         marksmanSpeed: Double = 70,
         marksmanHitPoints: Int = 1,
         marksmanSpawnPeriod: Int = 3,
-        marksmanCap: Int = 6
+        marksmanCap: Int = 6,
+        flankStrength: Double = 0,
+        flankCommitDistance: Double = 0,
+        sweepStaggerInterval: Double = 0,
+        sweepStaggerRadius: Double = 0
     ) {
         self.arenaSize = arenaSize
         self.playerRadius = playerRadius
@@ -102,9 +125,22 @@ nonisolated struct MVPBalance: Equatable, Sendable {
         self.marksmanHitPoints = marksmanHitPoints
         self.marksmanSpawnPeriod = marksmanSpawnPeriod
         self.marksmanCap = marksmanCap
+        self.flankStrength = flankStrength
+        self.flankCommitDistance = flankCommitDistance
+        self.sweepStaggerInterval = sweepStaggerInterval
+        self.sweepStaggerRadius = sweepStaggerRadius
     }
 
     // ADR-0015/0016: v3 keeps the enlarged player and matches the arena
     // aspect to the display so the field fills the screen edge to edge.
+    //
+    // Retained as what shipped in 0.3.0. Its aggression parameters are zero,
+    // which is exactly direct chase with no stagger gate — so v3 still
+    // describes the behaviour it always described.
     static let v3 = MVPBalance(arenaSize: .init(x: 640, y: 1400), playerRadius: 36, playerSpeed: 240, playerHitPoints: 3, movementDistancePerToken: 43.2, enemyRadius: 34, enemySpeed: 90, tutorialEnemySpeed: 75, enemyHitPoints: 2, sweepTriggerDistance: 200, sweepReach: 190, sweepArcDegrees: 120, sweepBladeDegrees: 28, sweepTelegraphDuration: 1, sweepActiveDuration: 0.45, sweepRecoveryDuration: 0.75, sweepDamage: 1, spawnInitialInterval: 4, spawnMinimumInterval: 1.5, spawnRampDuration: 180, enemyCap: 20)
+
+    // ADR-0021: v3 unchanged, plus converging approach and staggered sweeps.
+    // The commit distance exceeds the 200 sweep trigger so a chevron is
+    // already walking straight before it can swing.
+    static let v4 = MVPBalance(arenaSize: .init(x: 640, y: 1400), playerRadius: 36, playerSpeed: 240, playerHitPoints: 3, movementDistancePerToken: 43.2, enemyRadius: 34, enemySpeed: 90, tutorialEnemySpeed: 75, enemyHitPoints: 2, sweepTriggerDistance: 200, sweepReach: 190, sweepArcDegrees: 120, sweepBladeDegrees: 28, sweepTelegraphDuration: 1, sweepActiveDuration: 0.45, sweepRecoveryDuration: 0.75, sweepDamage: 1, spawnInitialInterval: 4, spawnMinimumInterval: 1.5, spawnRampDuration: 180, enemyCap: 20, flankStrength: 0.75, flankCommitDistance: 260, sweepStaggerInterval: 0.55, sweepStaggerRadius: 260)
 }

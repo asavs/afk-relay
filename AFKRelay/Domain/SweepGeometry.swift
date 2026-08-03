@@ -12,7 +12,7 @@ nonisolated enum SweepAttackPhase: Equatable, Sendable {
 nonisolated enum SweepGeometry {
     static func phase(
         at age: Double,
-        balance: MVPBalance = .v3
+        balance: MVPBalance = .v4
     ) -> SweepAttackPhase {
         let nonnegativeAge = max(0, age)
         let telegraphEnd = balance.sweepTelegraphDuration
@@ -51,7 +51,7 @@ nonisolated enum SweepGeometry {
 
     static func telegraphAngles(
         facing: Vector2,
-        balance: MVPBalance = .v3
+        balance: MVPBalance = .v4
     ) -> ClosedRange<Double> {
         let center = atan2(facing.y, facing.x)
         let halfArc = radians(balance.sweepArcDegrees / 2)
@@ -79,7 +79,7 @@ nonisolated enum SweepGeometry {
         facing: Vector2,
         age: Double,
         reversed: Bool = false,
-        balance: MVPBalance = .v3
+        balance: MVPBalance = .v4
     ) -> ClosedRange<Double> {
         let progress: Double
         switch phase(at: age, balance: balance) {
@@ -125,7 +125,7 @@ nonisolated enum SweepGeometry {
         facing: Vector2,
         age: Double,
         reversed: Bool = false,
-        balance: MVPBalance = .v3
+        balance: MVPBalance = .v4
     ) -> Bool {
         guard case .active = phase(at: age, balance: balance) else {
             return false
@@ -156,7 +156,7 @@ nonisolated enum SweepGeometry {
         fromAge: Double,
         throughAge: Double,
         reversed: Bool = false,
-        balance: MVPBalance = .v3
+        balance: MVPBalance = .v4
     ) -> Bool {
         let activeStart = balance.sweepTelegraphDuration
         let activeEnd = activeStart + balance.sweepActiveDuration

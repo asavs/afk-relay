@@ -34,7 +34,7 @@ nonisolated enum StepRefreshOutcome: Equatable, Sendable {
 final class GameCoordinator {
     private(set) var screen = GameScreen.loading
     private(set) var availableTokens: Int64 = 0
-    private(set) var playerHealth = MVPBalance.v3.playerHitPoints
+    private(set) var playerHealth = MVPBalance.v4.playerHitPoints
     private(set) var survivalDuration: TimeInterval = 0
     private(set) var tokensSpentThisRun: Int64 = 0
     private(set) var friendlyFireDefeatsThisRun = 0

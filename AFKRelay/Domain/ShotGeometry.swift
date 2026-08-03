@@ -29,7 +29,7 @@ nonisolated enum ShotGeometry {
     static func noseDistance(
         at age: Double,
         stoppedAt: Double? = nil,
-        balance: MVPBalance = .v3
+        balance: MVPBalance = .v4
     ) -> Double {
         let flightAge = max(0, age) - balance.shotTelegraphDuration
         guard flightAge > 0 else { return 0 }
@@ -39,7 +39,7 @@ nonisolated enum ShotGeometry {
 
     static func flightDuration(
         stoppedAt: Double? = nil,
-        balance: MVPBalance = .v3
+        balance: MVPBalance = .v4
     ) -> Double {
         guard balance.shotSpeed > 0 else { return 0 }
         let travelled = min(max(stoppedAt ?? balance.shotRange, 0), balance.shotRange)
@@ -49,7 +49,7 @@ nonisolated enum ShotGeometry {
     static func phase(
         at age: Double,
         stoppedAt: Double? = nil,
-        balance: MVPBalance = .v3
+        balance: MVPBalance = .v4
     ) -> ShotAttackPhase {
         let nonnegativeAge = max(0, age)
         let telegraphEnd = balance.shotTelegraphDuration
@@ -102,7 +102,7 @@ nonisolated enum ShotGeometry {
         throughDistance: Double,
         targets: [ArenaEntity],
         sourceID: Int,
-        balance: MVPBalance = .v3
+        balance: MVPBalance = .v4
     ) -> ShotBlock? {
         let epsilon = 0.000_000_001
         guard throughDistance >= fromDistance else { return nil }

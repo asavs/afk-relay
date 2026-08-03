@@ -10,7 +10,7 @@ enum ArenaSnapshotPresentationAdapter {
         events: [GameEvent] = [],
         previousPlayerPosition: Vector2? = nil,
         intendedPlayerPosition: Vector2? = nil,
-        balance: MVPBalance = .v3,
+        balance: MVPBalance = .v4,
         renderedFramesPerSecond: Int = 60
     ) -> ArenaRenderSnapshot {
         let allEntities = [snapshot.player] + snapshot.enemies

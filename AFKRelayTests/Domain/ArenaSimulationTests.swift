@@ -386,6 +386,151 @@ struct ArenaSimulationTests {
         #expect(arena.lastPlayerCollisionNormals.isEmpty)
     }
 
+    // MARK: - ADR-0021: converging approach and staggered sweeps
+
+    /// `AC-COMBAT-008`. A chevron out at range travels at an angle to the
+    /// player rather than straight at them.
+    @Test("A distant chevron curves in rather than walking straight")
+    func flankingApproachCarriesLateralTravel() throws {
+        var arena = ArenaSimulation(balance: .v4)
+        _ = arena.step()
+
+        let enemy = try #require(arena.enemies.first)
+        #expect(
+            enemy.position.distance(to: arena.player.position)
+                > MVPBalance.v4.flankCommitDistance,
+            "This test is only meaningful outside the commit distance"
+        )
+
+        let toward = (arena.player.position - enemy.position).normalized
+        let heading = enemy.velocity.normalized
+        // A straight approach has heading == toward, so the dot product is 1.
+        #expect(heading.dot(toward) < 0.99)
+        // Still broadly toward the player: this is a curve, not an orbit.
+        #expect(heading.dot(toward) > 0.5)
+    }
+
+    /// `AC-COMBAT-008`. Half the crowd wraps one way and half the other, so
+    /// bodies encircle instead of forming a column.
+    @Test("Chevrons of opposite id parity curve to opposite sides")
+    func flankingSidesOpposeByParity() throws {
+        let balance = MVPBalance.v4
+        var arena = ArenaSimulation(balance: balance, tutorialCompleted: true)
+        var compared = false
+
+        // Endless keeps feeding bodies in from the edges, so a pair out at
+        // range appears without having to place anyone by hand.
+        for _ in 0..<3_600 where !compared {
+            _ = arena.step()
+            let approaching = arena.enemies.filter {
+                $0.archetype == .chevron
+                    && $0.velocity.length > 0
+                    && $0.position.distance(to: arena.player.position)
+                        > balance.flankCommitDistance
+            }
+            guard
+                let odd = approaching.first(where: { !$0.id.isMultiple(of: 2) }),
+                let even = approaching.first(where: { $0.id.isMultiple(of: 2) })
+            else { continue }
+
+            #expect(
+                lateralSign(of: odd, towardPlayerAt: arena.player.position)
+                    != lateralSign(of: even, towardPlayerAt: arena.player.position)
+            )
+            compared = true
+        }
+
+        #expect(compared, "Never saw two approaching chevrons of each parity")
+    }
+
+    /// `AC-COMBAT-008`. The curve is how a body arrives, never how it strikes:
+    /// a telegraph thrown mid-turn points where the blade will not go.
+    @Test("A chevron inside the trigger distance walks straight in")
+    func flankingCommitsBeforeStriking() {
+        let balance = MVPBalance.v4
+        var arena = ArenaSimulation(balance: balance)
+        var straightened = false
+
+        for _ in 0..<3_000 {
+            _ = arena.step()
+            guard let enemy = arena.enemies.first else { continue }
+            let distance = enemy.position.distance(to: arena.player.position)
+            guard distance <= balance.sweepTriggerDistance,
+                  enemy.velocity.length > 0
+            else { continue }
+
+            let toward = (arena.player.position - enemy.position).normalized
+            #expect(
+                enemy.velocity.normalized.dot(toward) > 0.999,
+                "A body inside sweep range must not still be turning"
+            )
+            straightened = true
+            break
+        }
+
+        #expect(straightened, "The chevron never reached sweep range")
+    }
+
+    /// `AC-COMBAT-009`. Neighbours swing in sequence, so no single sideways
+    /// step answers every telegraph at once.
+    @Test("Neighbouring chevrons do not open sweeps on the same tick")
+    func staggeredSweepsDoNotStartTogether() {
+        let balance = MVPBalance.v4
+        var arena = ArenaSimulation(balance: balance, tutorialCompleted: true)
+        var sawTwoNeighboursInRange = false
+
+        for _ in 0..<7_200 {
+            _ = arena.step()
+            let fresh = arena.attacks.filter {
+                $0.kind == .sweep && $0.age == 0
+            }
+            #expect(fresh.count <= 1, "Two sweeps began on one tick")
+
+            let inRange = arena.enemies.filter {
+                $0.archetype == .chevron
+                    && $0.hitPoints > 0
+                    && $0.position.distance(to: arena.player.position)
+                        <= balance.sweepTriggerDistance
+            }
+            if inRange.count >= 2 { sawTwoNeighboursInRange = true }
+        }
+
+        #expect(
+            sawTwoNeighboursInRange,
+            "Never crowded, so the stagger gate was never exercised"
+        )
+    }
+
+    /// `AC-COMBAT-008`/`AC-COMBAT-009`. Neither rule may introduce a draw.
+    @Test("Aggression leaves the arena replayable")
+    func aggressionStaysDeterministic() {
+        func run() -> [Vector2] {
+            var arena = ArenaSimulation(balance: .v4, tutorialCompleted: true)
+            for tick in 0..<1_800 {
+                _ = arena.step(
+                    input: tick.isMultiple(of: 2)
+                        ? Vector2(x: 1, y: 0)
+                        : Vector2(x: 0, y: 1)
+                )
+            }
+            return arena.enemies.map(\.position)
+        }
+
+        #expect(run() == run())
+    }
+
+    private func lateralSign(
+        of enemy: ArenaEntity,
+        towardPlayerAt playerPosition: Vector2
+    ) -> Double {
+        let toward = (playerPosition - enemy.position).normalized
+        let heading = enemy.velocity.normalized
+        // Sign of the 2D cross product: which side of "straight at the
+        // player" this body is travelling.
+        let cross = heading.x * toward.y - heading.y * toward.x
+        return cross >= 0 ? 1 : -1
+    }
+
     private func compactTutorialBalance(
         playerHitPoints: Int = 3
     ) -> MVPBalance {

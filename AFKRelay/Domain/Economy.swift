@@ -190,7 +190,7 @@ nonisolated struct EconomyState: Codable, Equatable, Sendable {
 
 nonisolated struct MovementReservation: Equatable, Sendable { let requestedDistance: Double; let affordableDistance: Double; let tokensReserved: Int64 }
 nonisolated enum MovementCostPolicy {
-    static func reserve(distance: Double, state: EconomyState, balance: MVPBalance = .v3) -> MovementReservation {
+    static func reserve(distance: Double, state: EconomyState, balance: MVPBalance = .v4) -> MovementReservation {
         let requested = max(0, distance)
         // Remainder is already travelled-but-not-yet-charged distance, not a
         // credit. It consumes capacity in the token currently being earned.
@@ -202,7 +202,7 @@ nonisolated enum MovementCostPolicy {
         )
         return .init(requestedDistance: requested, affordableDistance: affordable, tokensReserved: min(tokens, state.availableTokens))
     }
-    @discardableResult static func commit(distance: Double, state: inout EconomyState, balance: MVPBalance = .v3) -> Double {
+    @discardableResult static func commit(distance: Double, state: inout EconomyState, balance: MVPBalance = .v4) -> Double {
         let allowed = reserve(distance: distance, state: state, balance: balance).affordableDistance
         let total = state.movementRemainder + allowed
         let spend = min(state.availableTokens, Int64((total / balance.movementDistancePerToken).rounded(.down)))

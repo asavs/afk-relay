@@ -4,7 +4,7 @@ nonisolated enum ArenaTutorialStage: String, Codable, Equatable, Sendable { case
 nonisolated enum EndlessPressurePolicy {
     static func spawnInterval(
         at endlessElapsed: Double,
-        balance: MVPBalance = .v3
+        balance: MVPBalance = .v4
     ) -> Double {
         max(
             balance.spawnMinimumInterval,
@@ -21,7 +21,7 @@ nonisolated struct EndlessSpawnScheduler: Equatable, Sendable {
     mutating func advance(
         duration: Double,
         livingEnemyCount: Int,
-        balance: MVPBalance = .v3
+        balance: MVPBalance = .v4
     ) -> Bool {
         let safeDuration = max(0, duration)
         elapsed += safeDuration
@@ -122,7 +122,7 @@ nonisolated struct ArenaAttack: Equatable, Sendable {
     /// `nil` while the lane ahead is still clear.
     var stopDistance: Double?
 
-    func isActive(balance: MVPBalance = .v3) -> Bool {
+    func isActive(balance: MVPBalance = .v4) -> Bool {
         switch kind {
         case .sweep:
             if case .active = SweepGeometry.phase(at: age, balance: balance) {
@@ -141,7 +141,7 @@ nonisolated struct ArenaAttack: Equatable, Sendable {
         }
     }
 
-    func isFinished(balance: MVPBalance = .v3) -> Bool {
+    func isFinished(balance: MVPBalance = .v4) -> Bool {
         switch kind {
         case .sweep:
             SweepGeometry.phase(at: age, balance: balance) == .finished
@@ -171,7 +171,7 @@ nonisolated enum ArenaAttackResolver {
         source: ArenaEntity,
         targets: [ArenaEntity],
         fromAge: Double? = nil,
-        balance: MVPBalance = .v3
+        balance: MVPBalance = .v4
     ) -> [Int] {
         targets
             .filter { target in
@@ -215,7 +215,7 @@ nonisolated struct ArenaSimulation: Sendable {
     let balance: MVPBalance; let bounds: ArenaBounds
     private(set) var player: ArenaEntity; private(set) var enemies: [ArenaEntity] = []; private(set) var attacks: [ArenaAttack] = []; private(set) var elapsed = 0.0; private(set) var tutorialStage: ArenaTutorialStage = .moveAndEvade; private(set) var result: ArenaRunResult?
     private var spawnScheduler = EndlessSpawnScheduler(); private var nextID = 1; private var endlessSpawnCount = 0; private var kills = 0; private var friendlyFireKills = 0; private var movedDistance = 0.0; private var evadedTelegraph = false; private(set) var tokensSpent: Int64 = 0; private(set) var lastPlayerTravelDistance = 0.0; private(set) var lastPlayerCollisionNormals: [Vector2] = []
-    init(balance: MVPBalance = .v3, tutorialCompleted: Bool = false) {
+    init(balance: MVPBalance = .v4, tutorialCompleted: Bool = false) {
         self.balance = balance
         bounds = .init(maxX: balance.arenaSize.x, maxY: balance.arenaSize.y)
         tutorialStage = tutorialCompleted ? .endless : .moveAndEvade
@@ -409,7 +409,7 @@ nonisolated struct ArenaSimulation: Sendable {
             let speed = tutorialStage == .endless
                 ? balance.enemySpeed
                 : balance.tutorialEnemySpeed
-            return toward * speed
+            return flankingApproach(for: enemy, toward: toward) * speed
         case .marksman:
             let distance = enemy.position.distance(to: player.position)
             let band = balance.shotStandoffBand
@@ -425,6 +425,36 @@ nonisolated struct ArenaSimulation: Sendable {
             let orbit = Vector2(x: -toward.y, y: toward.x) * sign
             return orbit * (balance.marksmanSpeed * 0.8)
         }
+    }
+
+    /// A chevron's approach heading: mostly toward the player, with a lateral
+    /// component that curves it in from one side.
+    ///
+    /// The side comes from the body's identifier, so half a crowd wraps one
+    /// way and half the other and the group encircles instead of forming a
+    /// column. The bearings converge rather than spread, which is the whole
+    /// point and the easy thing to get backwards: the player has no attack, so
+    /// a run is won by bodies staying close enough that one sweep's arc
+    /// catches a neighbour. A crowd that fanned out would fight better and die
+    /// to itself less, which is the opposite of the lesson.
+    ///
+    /// The lateral part tapers away as the body arrives, so the last stretch
+    /// is a straight walk rather than a curve that snaps straight at a
+    /// threshold. A body still turning when it swings throws a telegraph
+    /// pointing where the blade will not go.
+    private func flankingApproach(
+        for enemy: ArenaEntity,
+        toward: Vector2
+    ) -> Vector2 {
+        let commit = balance.flankCommitDistance
+        guard balance.flankStrength > 0, commit > 0 else { return toward }
+        let distance = enemy.position.distance(to: player.position)
+        guard distance > commit else { return toward }
+
+        let taper = min(1, (distance - commit) / commit)
+        let sign: Double = enemy.id.isMultiple(of: 2) ? 1 : -1
+        let lateral = Vector2(x: -toward.y, y: toward.x) * sign
+        return (toward + lateral * (balance.flankStrength * taper)).normalized
     }
 
     private func moveSolid(
@@ -453,6 +483,32 @@ nonisolated struct ArenaSimulation: Sendable {
             obstacles: obstacles
         )
     }
+    /// Whether a neighbour's sweep is too fresh for this body to start one.
+    ///
+    /// Telegraphs that start together offer one dodge that answers all of
+    /// them, and a crowd swinging in chorus is easier than a pair swinging in
+    /// turn. Sequential telegraphs mean the dodge clearing the first arrives
+    /// inside the second — and the second cannot correct its direction, which
+    /// is where a player discovers they can put a chevron where the blade is
+    /// going.
+    ///
+    /// Read from the attacks already in flight rather than from stored state,
+    /// so there is nothing new to keep deterministic. Bodies are considered in
+    /// array order, so one that starts a sweep this tick blocks its
+    /// neighbours on the same tick.
+    private func sweepIsCrowded(near enemy: ArenaEntity) -> Bool {
+        guard balance.sweepStaggerInterval > 0 else { return false }
+        return attacks.contains { attack in
+            guard attack.kind == .sweep,
+                  attack.sourceID != enemy.id,
+                  attack.age < balance.sweepStaggerInterval,
+                  let source = enemies.first(where: { $0.id == attack.sourceID })
+            else { return false }
+            return source.position.distance(to: enemy.position)
+                <= balance.sweepStaggerRadius
+        }
+    }
+
     private mutating func beginEnemyAttacks() {
         for enemy in enemies where enemy.hitPoints > 0
             && !attacks.contains(where: { $0.sourceID == enemy.id })
@@ -462,6 +518,9 @@ nonisolated struct ArenaSimulation: Sendable {
                 ? balance.shotTriggerDistance
                 : balance.sweepTriggerDistance
             guard distance <= trigger else { continue }
+            if enemy.archetype == .chevron, sweepIsCrowded(near: enemy) {
+                continue
+            }
 
             let facing = (player.position - enemy.position).normalized
             if let index = enemies.firstIndex(where: { $0.id == enemy.id }) {

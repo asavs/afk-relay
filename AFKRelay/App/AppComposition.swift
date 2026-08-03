@@ -10,7 +10,7 @@ struct AppComposition {
     let presentationCatalog: any ArenaPresentationCatalog
     let calendar: Calendar
     let now: @MainActor @Sendable () -> Date
-    var balance: MVPBalance = .v3
+    var balance: MVPBalance = .v4
     var initialDiagnosticsOptions: DiagnosticsOptions = .disabled
     /// Where a first connection's eligibility window opens. A seam rather
     /// than a direct call so a test can open the window at the current
@@ -140,7 +140,7 @@ struct AppComposition {
         )
     }
 
-    /// `MVPBalance.v3` with pressure reached quickly and a player durable
+    /// `MVPBalance.v4` with pressure reached quickly and a player durable
     /// enough to keep the swarm rendering for the whole measurement window.
     /// This is a measurement harness, not a gameplay configuration.
     private static let perfArenaBalance = MVPBalance(
