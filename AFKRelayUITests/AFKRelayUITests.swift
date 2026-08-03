@@ -269,6 +269,12 @@ nonisolated final class AFKRelayUITests: XCTestCase {
 
     /// Returns true when the sheet was seen and handled. The Health access
     /// sheet exposes stable locale-independent `UIA.Health.*` identifiers.
+    ///
+    /// The confirm button is named differently across the supported range:
+    /// iOS 26 uses `UIA.Health.Allow.Button`, iOS 17 uses the auth sheet's
+    /// `DoneButton`. Both are tried, and the sheet is only reported handled
+    /// once one of them is actually tapped — returning true with the sheet
+    /// still up strands the scenario with no outcome.
     @MainActor
     @discardableResult
     private func handleHealthAccessSheetIfPresented(
@@ -280,10 +286,20 @@ nonisolated final class AFKRelayUITests: XCTestCase {
             stepsSwitch.tap()
         }
 
-        let allow = app.buttons["UIA.Health.Allow.Button"]
-        if allow.waitForExistence(timeout: 5) {
-            allow.tap()
+        let identifiers = [
+            "UIA.Health.Allow.Button",
+            "UIA.Health.AuthSheet.DoneButton",
+        ]
+        for identifier in identifiers {
+            let allow = app.buttons[identifier]
+            // The confirm button stays disabled until a category is on.
+            if allow.waitForExistence(timeout: 5), allow.isEnabled {
+                allow.tap()
+                return true
+            }
         }
-        return true
+
+        XCTFail("Health access sheet appeared but no confirm button was tappable")
+        return false
     }
 }
