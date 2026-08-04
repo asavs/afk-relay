@@ -5,6 +5,22 @@ import Testing
 @Suite("Game coordinator step connection")
 @MainActor
 struct GameCoordinatorPolicyTests {
+    @Test(
+        "Lobby music follows resting screens",
+        arguments: [
+            (GameScreen.loading, false),
+            (.onboarding, true),
+            (.home, true),
+            (.running, false),
+            (.paused, false),
+            (.runSummary, true),
+            (.economyRecovery, false),
+        ]
+    )
+    func lobbyMusicPolicy(screen: GameScreen, expected: Bool) {
+        #expect(screen.playsLobbyMusic == expected)
+    }
+
     @Test("Unverified saved baseline returns to onboarding without querying")
     func unverifiedBaseline() async throws {
         let boundary = Date(timeIntervalSince1970: 1_800_000_000)

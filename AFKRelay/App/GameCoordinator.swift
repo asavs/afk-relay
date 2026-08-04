@@ -10,6 +10,15 @@ nonisolated enum GameScreen: Equatable, Sendable {
     case paused
     case runSummary
     case economyRecovery
+
+    var playsLobbyMusic: Bool {
+        switch self {
+        case .onboarding, .home, .runSummary:
+            true
+        case .loading, .running, .paused, .economyRecovery:
+            false
+        }
+    }
 }
 
 nonisolated enum GameCoordinatorError: Error, Equatable, Sendable {
@@ -34,7 +43,7 @@ nonisolated enum StepRefreshOutcome: Equatable, Sendable {
 final class GameCoordinator {
     private(set) var screen = GameScreen.loading {
         didSet {
-            soundPlayer.setLobbyMusicActive(screen == .home)
+            soundPlayer.setLobbyMusicActive(screen.playsLobbyMusic)
         }
     }
     private(set) var availableTokens: Int64 = 0
