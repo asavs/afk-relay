@@ -35,6 +35,8 @@ struct GameSettingsView: View {
                 DiagnosticsSettingsView(options: $diagnostics)
 
                 Section {
+                    LabeledContent("Version", value: Self.buildDescription)
+                        .accessibilityIdentifier("build-version")
                     LabeledContent("Movement", value: "1 step walked = 1 step of movement")
                     LabeledContent("Your data", value: "Stays on this iPhone")
                 } header: {
@@ -52,5 +54,17 @@ struct GameSettingsView: View {
             }
         }
         .accessibilityIdentifier("game-settings")
+    }
+
+    /// Marketing version and build number, as Apple records them in the
+    /// bundle. The build number is the part that distinguishes two installs
+    /// of the same version, which is exactly the question a tester on a
+    /// development build needs answered — "is this the one you just gave
+    /// me?" was unanswerable from inside the app before this.
+    private static var buildDescription: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "—"
+        let build = info?["CFBundleVersion"] as? String ?? "—"
+        return "\(version) (\(build))"
     }
 }
