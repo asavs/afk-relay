@@ -12,6 +12,7 @@ struct AppComposition {
     let now: @MainActor @Sendable () -> Date
     var balance: MVPBalance = .v4
     var initialDiagnosticsOptions: DiagnosticsOptions = .disabled
+    var audioPreferencesStore = AudioPreferencesStore()
     /// Where a first connection's eligibility window opens. A seam rather
     /// than a direct call so a test can open the window at the current
     /// instant, making it empty by construction — the condition the ordinary

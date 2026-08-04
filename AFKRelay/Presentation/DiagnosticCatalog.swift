@@ -9,6 +9,7 @@ final class DiagnosticCatalog: ArenaPresentationCatalog {
 
     func soundFileName(for role: PresentationSoundRole) -> String? {
         switch role {
+        case .lobbyMusic: "lobby-relay.wav"
         case .buttonPress: "button-press.wav"
         case .gameOver: "game-over.wav"
         case .sweepTelegraph: "sweep-telegraph.wav"

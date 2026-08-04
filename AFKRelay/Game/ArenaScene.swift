@@ -12,6 +12,11 @@ final class ArenaScene: SKScene {
     var fixedStepHandler: FixedStepHandler?
     var diagnosticsOptions = DiagnosticsOptions.disabled
     var accessibilityOptions = ArenaAccessibilityOptions.standard
+    var soundEffectsEnabled = true {
+        didSet {
+            renderer.setSoundEffectsEnabled(soundEffectsEnabled)
+        }
+    }
     private(set) var renderedFramesPerSecond = 0
 
     private let renderer: ArenaRenderer

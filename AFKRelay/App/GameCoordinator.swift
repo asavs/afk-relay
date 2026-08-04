@@ -32,7 +32,11 @@ nonisolated enum StepRefreshOutcome: Equatable, Sendable {
 @MainActor
 @Observable
 final class GameCoordinator {
-    private(set) var screen = GameScreen.loading
+    private(set) var screen = GameScreen.loading {
+        didSet {
+            soundPlayer.setLobbyMusicActive(screen == .home)
+        }
+    }
     private(set) var availableTokens: Int64 = 0
     private(set) var playerHealth = MVPBalance.v4.playerHitPoints
     private(set) var survivalDuration: TimeInterval = 0
@@ -47,6 +51,13 @@ final class GameCoordinator {
     var diagnosticsOptions = DiagnosticsOptions.disabled {
         didSet {
             arenaScene.diagnosticsOptions = diagnosticsOptions
+        }
+    }
+    var audioSettings: AudioSettings {
+        didSet {
+            composition.audioPreferencesStore.save(audioSettings)
+            soundPlayer.update(settings: audioSettings)
+            arenaScene.soundEffectsEnabled = audioSettings.soundEffectsEnabled
         }
     }
 
@@ -70,13 +81,17 @@ final class GameCoordinator {
 
     init(composition: AppComposition) {
         self.composition = composition
+        let audioSettings = composition.audioPreferencesStore.load()
+        self.audioSettings = audioSettings
         soundPlayer = PresentationSoundPlayer(
-            catalog: composition.presentationCatalog
+            catalog: composition.presentationCatalog,
+            settings: audioSettings
         )
         progressPersistence = PlayerProgressPersistenceQueue(
             repository: composition.progressRepository
         )
         arenaScene = ArenaScene(catalog: composition.presentationCatalog)
+        arenaScene.soundEffectsEnabled = audioSettings.soundEffectsEnabled
         playerHealth = composition.balance.playerHitPoints
         // Observers do not fire during init; mirror to the scene directly.
         diagnosticsOptions = composition.initialDiagnosticsOptions
@@ -279,11 +294,13 @@ final class GameCoordinator {
 
     func applicationDidBecomeInactive() {
         movementIntent = .zero
+        soundPlayer.setApplicationActive(false)
         arenaScene.setApplicationActive(false)
         flushPersistence(protectFromSuspension: true)
     }
 
     func applicationDidBecomeActive() {
+        soundPlayer.setApplicationActive(true)
         if screen == .running {
             arenaScene.setApplicationActive(true)
         }

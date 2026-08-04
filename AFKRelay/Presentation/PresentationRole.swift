@@ -32,6 +32,7 @@ enum PresentationRole: String, CaseIterable, Sendable {
 /// the active presentation catalog decides whether that moment has a sound and
 /// which resource represents it.
 enum PresentationSoundRole: String, CaseIterable, Sendable {
+    case lobbyMusic
     case buttonPress
     case gameOver
     case sweepTelegraph

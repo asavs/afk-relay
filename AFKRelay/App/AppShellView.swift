@@ -57,6 +57,7 @@ struct AppShellView: View {
         .sheet(isPresented: $showsSettings) {
             GameSettingsView(
                 diagnostics: $coordinator.diagnosticsOptions,
+                audioSettings: $coordinator.audioSettings,
                 refreshState: coordinator.refreshState,
                 onRefreshSteps: refreshStepsWithSound,
                 onOpenSystemSettings: openSystemSettingsWithSound,

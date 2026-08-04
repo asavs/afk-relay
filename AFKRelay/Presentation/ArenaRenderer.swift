@@ -24,6 +24,7 @@ final class ArenaRenderer {
     private var cachedGridBounds: CGRect?
     private var viewportSize: CGSize = .zero
     private var arenaSize = CGSize(width: 1000, height: 1500)
+    private var soundEffectsEnabled = true
 
     init(catalog: any ArenaPresentationCatalog = DiagnosticCatalog()) {
         self.catalog = catalog
@@ -45,6 +46,10 @@ final class ArenaRenderer {
     func setViewportSize(_ size: CGSize) {
         viewportSize = size
         layoutWorld()
+    }
+
+    func setSoundEffectsEnabled(_ isEnabled: Bool) {
+        soundEffectsEnabled = isEnabled
     }
 
     func render(
@@ -743,7 +748,11 @@ final class ArenaRenderer {
     }
 
     private func playSound(for role: PresentationSoundRole, on node: SKNode) {
-        guard let fileName = catalog.soundFileName(for: role) else { return }
+        guard soundEffectsEnabled,
+              let fileName = catalog.soundFileName(for: role)
+        else {
+            return
+        }
         node.run(.playSoundFileNamed(fileName, waitForCompletion: false))
     }
 

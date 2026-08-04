@@ -5,32 +5,109 @@ import Foundation
 /// SpriteKit scene, such as SwiftUI controls and the transition after defeat.
 @MainActor
 final class PresentationSoundPlayer {
-    private var players: [PresentationSoundRole: AVAudioPlayer] = [:]
+    private static let musicVolume: Float = 0.34
+    private static let musicFadeInDuration: TimeInterval = 0.8
+    private static let musicFadeOutDuration: TimeInterval = 0.35
 
-    init(catalog: any ArenaPresentationCatalog) {
-        preload(.buttonPress, from: catalog)
-        preload(.gameOver, from: catalog)
+    private var effectPlayers: [PresentationSoundRole: AVAudioPlayer] = [:]
+    private var musicPlayer: AVAudioPlayer?
+    private var settings: AudioSettings
+    private var lobbyMusicIsActive = false
+    private var applicationIsActive = true
+    private var musicPauseTask: Task<Void, Never>?
+
+    init(
+        catalog: any ArenaPresentationCatalog,
+        settings: AudioSettings = .enabled
+    ) {
+        self.settings = settings
+        effectPlayers[.buttonPress] = makePlayer(.buttonPress, from: catalog)
+        effectPlayers[.gameOver] = makePlayer(.gameOver, from: catalog)
+        musicPlayer = makePlayer(.lobbyMusic, from: catalog)
+        musicPlayer?.numberOfLoops = -1
+        musicPlayer?.volume = 0
     }
 
     func play(_ role: PresentationSoundRole) {
-        guard let player = players[role] else { return }
+        guard settings.soundEffectsEnabled,
+              let player = effectPlayers[role]
+        else {
+            return
+        }
         player.currentTime = 0
         player.play()
     }
 
-    private func preload(
+    func update(settings: AudioSettings) {
+        self.settings = settings
+        synchronizeMusic()
+    }
+
+    func setLobbyMusicActive(_ isActive: Bool) {
+        lobbyMusicIsActive = isActive
+        synchronizeMusic()
+    }
+
+    func setApplicationActive(_ isActive: Bool) {
+        applicationIsActive = isActive
+        synchronizeMusic()
+    }
+
+    private func makePlayer(
         _ role: PresentationSoundRole,
         from catalog: any ArenaPresentationCatalog
-    ) {
+    ) -> AVAudioPlayer? {
         guard
             let fileName = catalog.soundFileName(for: role),
             let url = Bundle.main.url(forResource: fileName, withExtension: nil),
             let player = try? AVAudioPlayer(contentsOf: url)
         else {
-            return
+            return nil
         }
 
         player.prepareToPlay()
-        players[role] = player
+        return player
+    }
+
+    private func synchronizeMusic() {
+        guard let musicPlayer else { return }
+        let shouldPlay = settings.musicEnabled
+            && lobbyMusicIsActive
+            && applicationIsActive
+
+        musicPauseTask?.cancel()
+        musicPauseTask = nil
+
+        if shouldPlay {
+            if !musicPlayer.isPlaying {
+                musicPlayer.play()
+            }
+            musicPlayer.setVolume(
+                Self.musicVolume,
+                fadeDuration: Self.musicFadeInDuration
+            )
+        } else if musicPlayer.isPlaying {
+            musicPlayer.setVolume(
+                0,
+                fadeDuration: Self.musicFadeOutDuration
+            )
+            musicPauseTask = Task { [weak self, weak musicPlayer] in
+                try? await Task.sleep(
+                    for: .seconds(Self.musicFadeOutDuration)
+                )
+                guard !Task.isCancelled,
+                      let self,
+                      let musicPlayer,
+                      !self.shouldPlayMusic
+                else {
+                    return
+                }
+                musicPlayer.pause()
+            }
+        }
+    }
+
+    private var shouldPlayMusic: Bool {
+        settings.musicEnabled && lobbyMusicIsActive && applicationIsActive
     }
 }

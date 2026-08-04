@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GameSettingsView: View {
     @Binding var diagnostics: DiagnosticsOptions
+    @Binding var audioSettings: AudioSettings
 
     let refreshState: WalletRefreshPresentationState
     let onRefreshSteps: @MainActor () -> Void
@@ -30,6 +31,18 @@ struct GameSettingsView: View {
                     Text("Steps")
                 } footer: {
                     Text("Not seeing your steps? Steps access lives in Health › Sharing › Apps › AFK Relay, not in this app’s Settings page.")
+                }
+
+                Section("Audio") {
+                    Toggle(isOn: $audioSettings.musicEnabled) {
+                        Label("Music", systemImage: "music.note")
+                    }
+                    .accessibilityIdentifier("music-enabled")
+
+                    Toggle(isOn: $audioSettings.soundEffectsEnabled) {
+                        Label("Sound Effects", systemImage: "speaker.wave.2")
+                    }
+                    .accessibilityIdentifier("sound-effects-enabled")
                 }
 
                 DiagnosticsSettingsView(options: $diagnostics)
