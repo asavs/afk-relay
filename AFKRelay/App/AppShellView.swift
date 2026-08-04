@@ -39,7 +39,7 @@ struct AppShellView: View {
                             context: statusBarContext,
                             topInset: rootProxy.safeAreaInsets.top,
                             onPause: coordinator.screen == .running
-                                ? pauseRunWithSound
+                                ? pauseRunWithFeedback
                                 : nil
                         )
                         .frame(height: max(rootProxy.safeAreaInsets.top, 24))
@@ -51,6 +51,21 @@ struct AppShellView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .sensoryFeedback(trigger: coordinator.hapticEvent) { _, event in
+            guard let event else { return nil }
+            return switch event.role {
+            case .buttonPress:
+                .impact(weight: .light)
+            case .playerDamage:
+                .impact(weight: .heavy)
+            case .friendlyFireImpact:
+                .impact(weight: .medium)
+            case .friendlyFireDiscovery:
+                .success
+            case .gameOver:
+                .error
+            }
+        }
         // Game surfaces own their chrome; pre-game surfaces (loading,
         // onboarding, recovery) keep the system status bar.
         .statusBarHidden(statusBarContext != nil)
@@ -59,9 +74,9 @@ struct AppShellView: View {
                 diagnostics: $coordinator.diagnosticsOptions,
                 audioSettings: $coordinator.audioSettings,
                 refreshState: coordinator.refreshState,
-                onRefreshSteps: refreshStepsWithSound,
-                onOpenSystemSettings: openSystemSettingsWithSound,
-                onDone: closeSettingsWithSound
+                onRefreshSteps: refreshStepsWithFeedback,
+                onOpenSystemSettings: openSystemSettingsWithFeedback,
+                onDone: closeSettingsWithFeedback
             )
         }
         .task {
@@ -95,7 +110,7 @@ struct AppShellView: View {
                 }
             )
         ) {
-            Button("OK") { coordinator.playButtonSound() }
+            Button("OK") { coordinator.playButtonFeedback() }
         } message: {
             Text(coordinator.progressMessage ?? "")
         }
@@ -123,9 +138,9 @@ struct AppShellView: View {
         case .onboarding:
             StepOnboardingView(
                 refreshState: coordinator.refreshState,
-                onConnectSteps: connectStepsWithSound,
-                onRetry: connectStepsWithSound,
-                onOpenSettings: openSystemSettingsWithSound
+                onConnectSteps: connectStepsWithFeedback,
+                onRetry: connectStepsWithFeedback,
+                onOpenSettings: openSystemSettingsWithFeedback
             )
         case .home:
             GameHomeView(
@@ -135,9 +150,9 @@ struct AppShellView: View {
                 hasRunRecords: coordinator.hasRunRecords,
                 bestSurvivalDuration: coordinator.bestSurvivalDuration,
                 bestFriendlyFireDefeats: coordinator.bestFriendlyFireDefeats,
-                onStartRun: startRunWithSound,
-                onRefreshSteps: refreshStepsWithSound,
-                onShowSettings: openSettingsWithSound
+                onStartRun: startRunWithFeedback,
+                onRefreshSteps: refreshStepsWithFeedback,
+                onShowSettings: openSettingsWithFeedback
             )
         case .running, .paused:
             arenaView
@@ -145,8 +160,8 @@ struct AppShellView: View {
             if let runSummary = coordinator.runSummary {
                 RunSummaryView(
                     model: runSummary,
-                    onRunAgain: runAgainWithSound,
-                    onReturnHome: returnHomeWithSound
+                    onRunAgain: runAgainWithFeedback,
+                    onReturnHome: returnHomeWithFeedback
                 )
             } else {
                 loadingView
@@ -215,9 +230,9 @@ struct AppShellView: View {
         .overlay {
             if coordinator.screen == .paused {
                 RunPauseOverlay(
-                    onResume: resumeRunWithSound,
-                    onEndRun: endRunWithSound,
-                    onShowSettings: openSettingsWithSound
+                    onResume: resumeRunWithFeedback,
+                    onEndRun: endRunWithFeedback,
+                    onShowSettings: openSettingsWithFeedback
                 )
             }
         }
@@ -255,7 +270,7 @@ struct AppShellView: View {
                         "Reset Movement Bank",
                         systemImage: "trash.fill",
                         role: .destructive,
-                        action: showResetConfirmationWithSound
+                        action: showResetConfirmationWithFeedback
                     )
                     .afkChromeButtonStyle(prominent: true)
                     .controlSize(.large)
@@ -265,10 +280,10 @@ struct AppShellView: View {
                         titleVisibility: .visible
                     ) {
                         Button("Reset Bank", role: .destructive) {
-                            resetCorruptEconomyWithSound()
+                            resetCorruptEconomyWithFeedback()
                         }
                         Button("Cancel", role: .cancel) {
-                            coordinator.playButtonSound()
+                            coordinator.playButtonFeedback()
                         }
                     } message: {
                         Text("This starts a new bank at zero steps and can’t restore the previous one.")
@@ -293,59 +308,59 @@ struct AppShellView: View {
     private func performButtonAction(
         _ action: @MainActor () -> Void
     ) {
-        coordinator.playButtonSound()
+        coordinator.playButtonFeedback()
         action()
     }
 
-    private func pauseRunWithSound() {
+    private func pauseRunWithFeedback() {
         performButtonAction(coordinator.pauseRun)
     }
 
-    private func refreshStepsWithSound() {
+    private func refreshStepsWithFeedback() {
         performButtonAction(handleRetryOrRefresh)
     }
 
-    private func connectStepsWithSound() {
+    private func connectStepsWithFeedback() {
         performButtonAction(coordinator.connectSteps)
     }
 
-    private func openSystemSettingsWithSound() {
+    private func openSystemSettingsWithFeedback() {
         performButtonAction(coordinator.openSystemSettings)
     }
 
-    private func startRunWithSound() {
+    private func startRunWithFeedback() {
         performButtonAction(coordinator.startRun)
     }
 
-    private func openSettingsWithSound() {
+    private func openSettingsWithFeedback() {
         performButtonAction { showsSettings = true }
     }
 
-    private func closeSettingsWithSound() {
+    private func closeSettingsWithFeedback() {
         performButtonAction { showsSettings = false }
     }
 
-    private func runAgainWithSound() {
+    private func runAgainWithFeedback() {
         performButtonAction(coordinator.runAgain)
     }
 
-    private func returnHomeWithSound() {
+    private func returnHomeWithFeedback() {
         performButtonAction(coordinator.returnHome)
     }
 
-    private func resumeRunWithSound() {
+    private func resumeRunWithFeedback() {
         performButtonAction(coordinator.resumeRun)
     }
 
-    private func endRunWithSound() {
+    private func endRunWithFeedback() {
         performButtonAction(coordinator.endRun)
     }
 
-    private func showResetConfirmationWithSound() {
+    private func showResetConfirmationWithFeedback() {
         performButtonAction { showsResetConfirmation = true }
     }
 
-    private func resetCorruptEconomyWithSound() {
+    private func resetCorruptEconomyWithFeedback() {
         performButtonAction(coordinator.resetCorruptEconomy)
     }
 

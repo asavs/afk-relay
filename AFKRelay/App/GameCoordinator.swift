@@ -57,6 +57,7 @@ final class GameCoordinator {
     private(set) var averageDailySteps: Int64 = 0
     private(set) var runSummary: RunSummaryModel?
     private(set) var progressMessage: String?
+    private(set) var hapticEvent: PresentationHapticEvent?
     var diagnosticsOptions = DiagnosticsOptions.disabled {
         didSet {
             arenaScene.diagnosticsOptions = diagnosticsOptions
@@ -146,8 +147,9 @@ final class GameCoordinator {
         availableTokens > 0 && !isPersistenceBlocked
     }
 
-    func playButtonSound() {
+    func playButtonFeedback() {
         soundPlayer.play(.buttonPress)
+        publishHaptic(.buttonPress)
     }
 
     // Read when a screen is built; records only change across screen
@@ -643,6 +645,15 @@ final class GameCoordinator {
     }
 
     private func process(_ events: [GameEvent]) {
+        if let simulation,
+           let role = PresentationHapticPolicy.role(
+               for: events,
+               playerID: simulation.player.id
+           )
+        {
+            publishHaptic(role)
+        }
+
         for event in events {
             switch event {
             case .tutorialCompleted:
@@ -655,6 +666,11 @@ final class GameCoordinator {
                 break
             }
         }
+    }
+
+    private func publishHaptic(_ role: PresentationHapticRole) {
+        let sequence = (hapticEvent?.sequence ?? 0) &+ 1
+        hapticEvent = PresentationHapticEvent(sequence: sequence, role: role)
     }
 
     private func completeRun() {
