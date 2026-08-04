@@ -10,7 +10,7 @@ struct RunPauseOverlay: View {
             Color.black.opacity(AFKRelayUIStyle.pauseDimOpacity)
                 .ignoresSafeArea()
 
-            DiagnosticPanel {
+            DiagnosticPanel(hostsControls: true) {
                 VStack(spacing: AFKRelayUIStyle.standardSpacing) {
                     Label("Run Paused", systemImage: "pause.circle.fill")
                         .font(.title)
