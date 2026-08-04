@@ -243,6 +243,8 @@ enum ArenaSnapshotPresentationAdapter {
         return ArenaRenderImpact(
             id: "I\(tick)-\(source)-\(target)-\(index)",
             position: point(position),
+            sourceEntityID: "E\(source)",
+            targetEntityID: "E\(target)",
             kind: kind,
             isEmphasized: emphasizeFriendlyFire && kind == .friendlyFire
         )

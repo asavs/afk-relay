@@ -9,6 +9,8 @@ struct ArenaRenderImpact: Identifiable, Equatable, Sendable {
 
     let id: String
     let position: CGPoint
+    let sourceEntityID: String
+    let targetEntityID: String
     let kind: Kind
     /// The discovery moment: the first friendly-fire hit of a run's staged
     /// tutorial receives amplified presentation (REQ-GAME-007).

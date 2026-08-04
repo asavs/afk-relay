@@ -225,25 +225,29 @@ final class ArenaRenderer {
 
     private func makeEntityNodes(for entity: ArenaRenderEntity) -> EntityNodes {
         let container = SKNode()
+        let reaction = SKNode()
         let body = SKSpriteNode()
         let hurtbox = SKShapeNode()
         let facingMarker = SKShapeNode()
         let identifier = makeLabel()
 
         container.name = "entity.\(entity.id)"
+        reaction.name = "entity.reaction"
         body.name = "entity.body"
         hurtbox.name = "entity.hurtbox"
         facingMarker.name = "entity.facing"
         identifier.name = "entity.identifier"
 
         container.addChild(hurtbox)
-        container.addChild(body)
-        container.addChild(facingMarker)
+        container.addChild(reaction)
+        reaction.addChild(body)
+        reaction.addChild(facingMarker)
         container.addChild(identifier)
         entityLayer.addChild(container)
 
         return EntityNodes(
             container: container,
+            reaction: reaction,
             body: body,
             hurtbox: hurtbox,
             facingMarker: facingMarker,
@@ -631,7 +635,15 @@ final class ArenaRenderer {
         _ impacts: [ArenaRenderImpact],
         accessibility: ArenaAccessibilityOptions
     ) {
-        for impact in impacts where renderedImpactIDs.insert(impact.id).inserted {
+        let newImpacts = impacts.filter {
+            renderedImpactIDs.insert($0.id).inserted
+        }
+        applyImpactReactions(
+            for: newImpacts,
+            accessibility: accessibility
+        )
+
+        for impact in newImpacts {
             let role: PresentationRole = impact.kind == .friendlyFire
                 ? .friendlyFireImpact
                 : .playerDamageImpact
@@ -698,6 +710,85 @@ final class ArenaRenderer {
         if renderedImpactIDs.count > 512 {
             renderedImpactIDs = Set(impacts.map(\.id))
         }
+    }
+
+    private func applyImpactReactions(
+        for impacts: [ArenaRenderImpact],
+        accessibility: ArenaAccessibilityOptions
+    ) {
+        let reactions = ArenaImpactReactionPolicy.reactions(
+            for: impacts,
+            accessibility: accessibility
+        )
+        for reaction in reactions {
+            guard let nodes = entityNodes[reaction.entityID] else { continue }
+            let direction = impactDirection(
+                for: reaction,
+                among: impacts
+            )
+            runImpactReaction(
+                on: nodes.reaction,
+                reaction: reaction,
+                direction: direction
+            )
+        }
+    }
+
+    private func impactDirection(
+        for reaction: ArenaEntityImpactReaction,
+        among impacts: [ArenaRenderImpact]
+    ) -> CGVector {
+        guard let impact = impacts.first(where: {
+            $0.sourceEntityID == reaction.entityID
+                || $0.targetEntityID == reaction.entityID
+        }),
+              let source = entityNodes[impact.sourceEntityID]?.container.position,
+              let target = entityNodes[impact.targetEntityID]?.container.position
+        else {
+            return CGVector(dx: 1, dy: 0)
+        }
+
+        let dx = target.x - source.x
+        let dy = target.y - source.y
+        let length = max(sqrt(dx * dx + dy * dy), 1)
+        let sign: CGFloat = reaction.role == .target ? 1 : -1
+        return CGVector(dx: dx / length * sign, dy: dy / length * sign)
+    }
+
+    private func runImpactReaction(
+        on node: SKNode,
+        reaction: ArenaEntityImpactReaction,
+        direction: CGVector
+    ) {
+        node.removeAction(forKey: "impact-reaction")
+        node.position = .zero
+
+        let isTarget = reaction.role == .target
+        node.xScale = isTarget ? 1.12 : 0.96
+        node.yScale = isTarget ? 0.88 : 1.04
+
+        let distance: CGFloat = isTarget ? 10 : 4
+        let releaseDuration: TimeInterval = 2.0 / 60.0
+        let release = SKAction.group([
+            .moveBy(
+                x: direction.dx * distance,
+                y: direction.dy * distance,
+                duration: releaseDuration
+            ),
+            .scaleX(to: 1, y: 1, duration: releaseDuration),
+        ])
+        release.timingMode = .easeOut
+
+        let settle = SKAction.move(to: .zero, duration: 2.0 / 60.0)
+        settle.timingMode = .easeInEaseOut
+        node.run(
+            .sequence([
+                .wait(forDuration: reaction.holdDuration),
+                release,
+                settle,
+            ]),
+            withKey: "impact-reaction"
+        )
     }
 
     private func updateDebugVectors(
@@ -870,6 +961,7 @@ final class ArenaRenderer {
 private extension ArenaRenderer {
     final class EntityNodes {
         let container: SKNode
+        let reaction: SKNode
         let body: SKSpriteNode
         let hurtbox: SKShapeNode
         let facingMarker: SKShapeNode
@@ -878,6 +970,7 @@ private extension ArenaRenderer {
 
         init(
             container: SKNode,
+            reaction: SKNode,
             body: SKSpriteNode,
             hurtbox: SKShapeNode,
             facingMarker: SKShapeNode,
@@ -885,6 +978,7 @@ private extension ArenaRenderer {
             previousHitPoints: Int
         ) {
             self.container = container
+            self.reaction = reaction
             self.body = body
             self.hurtbox = hurtbox
             self.facingMarker = facingMarker
