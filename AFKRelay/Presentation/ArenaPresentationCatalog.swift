@@ -17,4 +17,8 @@ protocol ArenaPresentationCatalog: AnyObject {
         for role: PresentationRole,
         accessibility: ArenaAccessibilityOptions
     ) -> SKTexture
+
+    /// Short, non-positional gameplay feedback. A catalog may return `nil`
+    /// for a deliberately silent treatment.
+    func soundFileName(for role: PresentationSoundRole) -> String?
 }

@@ -39,7 +39,7 @@ struct AppShellView: View {
                             context: statusBarContext,
                             topInset: rootProxy.safeAreaInsets.top,
                             onPause: coordinator.screen == .running
-                                ? coordinator.pauseRun
+                                ? pauseRunWithSound
                                 : nil
                         )
                         .frame(height: max(rootProxy.safeAreaInsets.top, 24))
@@ -58,9 +58,9 @@ struct AppShellView: View {
             GameSettingsView(
                 diagnostics: $coordinator.diagnosticsOptions,
                 refreshState: coordinator.refreshState,
-                onRefreshSteps: handleRetryOrRefresh,
-                onOpenSystemSettings: coordinator.openSystemSettings,
-                onDone: { showsSettings = false }
+                onRefreshSteps: refreshStepsWithSound,
+                onOpenSystemSettings: openSystemSettingsWithSound,
+                onDone: closeSettingsWithSound
             )
         }
         .task {
@@ -94,7 +94,7 @@ struct AppShellView: View {
                 }
             )
         ) {
-            Button("OK") {}
+            Button("OK") { coordinator.playButtonSound() }
         } message: {
             Text(coordinator.progressMessage ?? "")
         }
@@ -122,9 +122,9 @@ struct AppShellView: View {
         case .onboarding:
             StepOnboardingView(
                 refreshState: coordinator.refreshState,
-                onConnectSteps: coordinator.connectSteps,
-                onRetry: coordinator.connectSteps,
-                onOpenSettings: coordinator.openSystemSettings
+                onConnectSteps: connectStepsWithSound,
+                onRetry: connectStepsWithSound,
+                onOpenSettings: openSystemSettingsWithSound
             )
         case .home:
             GameHomeView(
@@ -134,9 +134,9 @@ struct AppShellView: View {
                 hasRunRecords: coordinator.hasRunRecords,
                 bestSurvivalDuration: coordinator.bestSurvivalDuration,
                 bestFriendlyFireDefeats: coordinator.bestFriendlyFireDefeats,
-                onStartRun: coordinator.startRun,
-                onRefreshSteps: handleRetryOrRefresh,
-                onShowSettings: { showsSettings = true }
+                onStartRun: startRunWithSound,
+                onRefreshSteps: refreshStepsWithSound,
+                onShowSettings: openSettingsWithSound
             )
         case .running, .paused:
             arenaView
@@ -144,8 +144,8 @@ struct AppShellView: View {
             if let runSummary = coordinator.runSummary {
                 RunSummaryView(
                     model: runSummary,
-                    onRunAgain: coordinator.runAgain,
-                    onReturnHome: coordinator.returnHome
+                    onRunAgain: runAgainWithSound,
+                    onReturnHome: returnHomeWithSound
                 )
             } else {
                 loadingView
@@ -214,9 +214,9 @@ struct AppShellView: View {
         .overlay {
             if coordinator.screen == .paused {
                 RunPauseOverlay(
-                    onResume: coordinator.resumeRun,
-                    onEndRun: coordinator.endRun,
-                    onShowSettings: { showsSettings = true }
+                    onResume: resumeRunWithSound,
+                    onEndRun: endRunWithSound,
+                    onShowSettings: openSettingsWithSound
                 )
             }
         }
@@ -254,7 +254,7 @@ struct AppShellView: View {
                         "Reset Movement Bank",
                         systemImage: "trash.fill",
                         role: .destructive,
-                        action: { showsResetConfirmation = true }
+                        action: showResetConfirmationWithSound
                     )
                     .afkChromeButtonStyle(prominent: true)
                     .controlSize(.large)
@@ -264,9 +264,11 @@ struct AppShellView: View {
                         titleVisibility: .visible
                     ) {
                         Button("Reset Bank", role: .destructive) {
-                            coordinator.resetCorruptEconomy()
+                            resetCorruptEconomyWithSound()
                         }
-                        Button("Cancel", role: .cancel) {}
+                        Button("Cancel", role: .cancel) {
+                            coordinator.playButtonSound()
+                        }
                     } message: {
                         Text("This starts a new bank at zero steps and can’t restore the previous one.")
                     }
@@ -285,6 +287,65 @@ struct AppShellView: View {
         } else {
             coordinator.refreshSteps()
         }
+    }
+
+    private func performButtonAction(
+        _ action: @MainActor () -> Void
+    ) {
+        coordinator.playButtonSound()
+        action()
+    }
+
+    private func pauseRunWithSound() {
+        performButtonAction(coordinator.pauseRun)
+    }
+
+    private func refreshStepsWithSound() {
+        performButtonAction(handleRetryOrRefresh)
+    }
+
+    private func connectStepsWithSound() {
+        performButtonAction(coordinator.connectSteps)
+    }
+
+    private func openSystemSettingsWithSound() {
+        performButtonAction(coordinator.openSystemSettings)
+    }
+
+    private func startRunWithSound() {
+        performButtonAction(coordinator.startRun)
+    }
+
+    private func openSettingsWithSound() {
+        performButtonAction { showsSettings = true }
+    }
+
+    private func closeSettingsWithSound() {
+        performButtonAction { showsSettings = false }
+    }
+
+    private func runAgainWithSound() {
+        performButtonAction(coordinator.runAgain)
+    }
+
+    private func returnHomeWithSound() {
+        performButtonAction(coordinator.returnHome)
+    }
+
+    private func resumeRunWithSound() {
+        performButtonAction(coordinator.resumeRun)
+    }
+
+    private func endRunWithSound() {
+        performButtonAction(coordinator.endRun)
+    }
+
+    private func showResetConfirmationWithSound() {
+        performButtonAction { showsResetConfirmation = true }
+    }
+
+    private func resetCorruptEconomyWithSound() {
+        performButtonAction(coordinator.resetCorruptEconomy)
     }
 
     private func publishAccessibilityOptions() {

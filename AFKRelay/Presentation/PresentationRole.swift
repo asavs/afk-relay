@@ -27,3 +27,18 @@ enum PresentationRole: String, CaseIterable, Sendable {
     case pursuitVector
     case diagnosticText
 }
+
+/// A semantic sound moment. Gameplay supplies attack and impact state, while
+/// the active presentation catalog decides whether that moment has a sound and
+/// which resource represents it.
+enum PresentationSoundRole: String, CaseIterable, Sendable {
+    case buttonPress
+    case gameOver
+    case sweepTelegraph
+    case sweepActive
+    case shotTelegraph
+    case shotActive
+    case playerDamageImpact
+    case friendlyFireImpact
+    case friendlyFireDiscovery
+}

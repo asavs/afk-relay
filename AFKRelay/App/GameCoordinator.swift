@@ -52,6 +52,7 @@ final class GameCoordinator {
 
     @ObservationIgnored let arenaScene: ArenaScene
     @ObservationIgnored private let composition: AppComposition
+    @ObservationIgnored private let soundPlayer: PresentationSoundPlayer
     @ObservationIgnored private let progressPersistence:
         PlayerProgressPersistenceQueue
     @ObservationIgnored private var economyLedger: EconomyLedger?
@@ -69,6 +70,9 @@ final class GameCoordinator {
 
     init(composition: AppComposition) {
         self.composition = composition
+        soundPlayer = PresentationSoundPlayer(
+            catalog: composition.presentationCatalog
+        )
         progressPersistence = PlayerProgressPersistenceQueue(
             repository: composition.progressRepository
         )
@@ -116,6 +120,10 @@ final class GameCoordinator {
 
     var canStartRun: Bool {
         availableTokens > 0 && !isPersistenceBlocked
+    }
+
+    func playButtonSound() {
+        soundPlayer.play(.buttonPress)
     }
 
     // Read when a screen is built; records only change across screen
@@ -601,6 +609,7 @@ final class GameCoordinator {
         if economyLedger.persistenceFailure {
             blockForPersistenceFailure()
         } else if events.contains(.playerDefeated) {
+            soundPlayer.play(.gameOver)
             completeRun()
         }
 

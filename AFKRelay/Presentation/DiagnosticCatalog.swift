@@ -7,6 +7,20 @@ final class DiagnosticCatalog: ArenaPresentationCatalog {
 
     private var textureCache: [String: SKTexture] = [:]
 
+    func soundFileName(for role: PresentationSoundRole) -> String? {
+        switch role {
+        case .buttonPress: "button-press.wav"
+        case .gameOver: "game-over.wav"
+        case .sweepTelegraph: "sweep-telegraph.wav"
+        case .sweepActive: "sweep-active.wav"
+        case .shotTelegraph: "shot-telegraph.wav"
+        case .shotActive: "shot-active.wav"
+        case .playerDamageImpact: "player-damage.wav"
+        case .friendlyFireImpact: "friendly-fire.wav"
+        case .friendlyFireDiscovery: "friendly-fire-discovery.wav"
+        }
+    }
+
     func style(
         for role: PresentationRole,
         accessibility: ArenaAccessibilityOptions

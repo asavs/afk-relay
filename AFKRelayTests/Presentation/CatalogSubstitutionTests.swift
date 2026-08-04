@@ -6,6 +6,23 @@ import UIKit
 @Suite("Presentation catalog substitution")
 @MainActor
 struct CatalogSubstitutionTests {
+    @Test("Diagnostic sound roles resolve unique bundled resources")
+    func diagnosticSoundsAreBundled() throws {
+        let catalog = DiagnosticCatalog()
+        var fileNames: Set<String> = []
+
+        for role in PresentationSoundRole.allCases {
+            let fileName = try #require(catalog.soundFileName(for: role))
+            #expect(fileNames.insert(fileName).inserted)
+            #expect(
+                Bundle.main.url(
+                    forResource: fileName,
+                    withExtension: nil
+                ) != nil
+            )
+        }
+    }
+
     @Test("Two catalogs change resources but never mechanics or results")
     func catalogInvariance() {
         let cyan = TinyTestCatalog(
@@ -85,6 +102,10 @@ struct CatalogSubstitutionTests {
                 accessibility: .standard
             )
         )
+        #expect(
+            cyan.soundFileName(for: .friendlyFireImpact)
+                != magenta.soundFileName(for: .friendlyFireImpact)
+        )
         #expect(firstSimulation.snapshot == secondSimulation.snapshot)
         #expect(firstEvents == secondEvents)
         #expect(firstEconomy == secondEconomy)
@@ -136,5 +157,9 @@ private final class TinyTestCatalog: ArenaPresentationCatalog {
         accessibility: ArenaAccessibilityOptions
     ) -> SKTexture {
         texture
+    }
+
+    func soundFileName(for role: PresentationSoundRole) -> String? {
+        "\(catalogIdentifier)-\(role.rawValue).wav"
     }
 }

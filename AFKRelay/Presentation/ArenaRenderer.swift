@@ -395,6 +395,15 @@ final class ArenaRenderer {
         container.addChild(timing)
         attackLayer.addChild(container)
 
+        switch attack.phase {
+        case .telegraph:
+            playSound(for: telegraphSoundRole(for: attack), on: container)
+        case .active:
+            playSound(for: activeSoundRole(for: attack), on: container)
+        case .recovery:
+            break
+        }
+
         return AttackNodes(
             container: container,
             telegraphCrop: telegraphCrop,
@@ -402,7 +411,8 @@ final class ArenaRenderer {
             telegraph: telegraph,
             active: active,
             identifier: identifier,
-            timing: timing
+            timing: timing,
+            previousPhase: attack.phase
         )
     }
 
@@ -414,6 +424,13 @@ final class ArenaRenderer {
     ) {
         let telegraphStyle = catalog.style(for: .attackTelegraph, accessibility: accessibility)
         let activeStyle = catalog.style(for: .attackActive, accessibility: accessibility)
+
+        if nodes.previousPhase != attack.phase {
+            if attack.phase == .active {
+                playSound(for: activeSoundRole(for: attack), on: nodes.container)
+            }
+            nodes.previousPhase = attack.phase
+        }
 
         nodes.container.position = attack.origin
         nodes.telegraph.color = telegraphStyle.fillColor
@@ -622,6 +639,13 @@ final class ArenaRenderer {
             node.zPosition = 12
             impactLayer.addChild(node)
 
+            let soundRole: PresentationSoundRole = switch (impact.kind, impact.isEmphasized) {
+            case (.playerDamage, _): .playerDamageImpact
+            case (.friendlyFire, true): .friendlyFireDiscovery
+            case (.friendlyFire, false): .friendlyFireImpact
+            }
+            playSound(for: soundRole, on: node)
+
             // The discovery hit is the loudest effect in the game: a longer,
             // larger burst plus an expanding ring (static ring under Reduce
             // Motion) so the teaching moment cannot be missed.
@@ -698,6 +722,29 @@ final class ArenaRenderer {
         node.fillColor = style.fillColor.withAlphaComponent(style.fillAlpha)
         node.strokeColor = style.strokeColor
         node.lineWidth = style.lineWidth
+    }
+
+    private func telegraphSoundRole(
+        for attack: ArenaRenderAttack
+    ) -> PresentationSoundRole {
+        switch attack.shape {
+        case .sweep: .sweepTelegraph
+        case .shot: .shotTelegraph
+        }
+    }
+
+    private func activeSoundRole(
+        for attack: ArenaRenderAttack
+    ) -> PresentationSoundRole {
+        switch attack.shape {
+        case .sweep: .sweepActive
+        case .shot: .shotActive
+        }
+    }
+
+    private func playSound(for role: PresentationSoundRole, on node: SKNode) {
+        guard let fileName = catalog.soundFileName(for: role) else { return }
+        node.run(.playSoundFileNamed(fileName, waitForCompletion: false))
     }
 
     private func makeLabel() -> SKLabelNode {
@@ -852,6 +899,7 @@ private extension ArenaRenderer {
         let active: SKShapeNode
         let identifier: SKLabelNode
         let timing: SKLabelNode
+        var previousPhase: ArenaRenderAttack.Phase
 
         init(
             container: SKNode,
@@ -860,7 +908,8 @@ private extension ArenaRenderer {
             telegraph: SKSpriteNode,
             active: SKShapeNode,
             identifier: SKLabelNode,
-            timing: SKLabelNode
+            timing: SKLabelNode,
+            previousPhase: ArenaRenderAttack.Phase
         ) {
             self.container = container
             self.telegraphCrop = telegraphCrop
@@ -869,6 +918,7 @@ private extension ArenaRenderer {
             self.active = active
             self.identifier = identifier
             self.timing = timing
+            self.previousPhase = previousPhase
         }
     }
 }
