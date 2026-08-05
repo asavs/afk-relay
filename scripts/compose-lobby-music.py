@@ -11,6 +11,8 @@ from __future__ import annotations
 import math
 import random
 import struct
+import subprocess
+import tempfile
 import wave
 from array import array
 from pathlib import Path
@@ -21,7 +23,10 @@ BEAT = 60 / BPM
 BAR = 4 * BEAT
 BARS = 30
 DURATION = BARS * BAR
-OUTPUT = Path(__file__).resolve().parents[1] / "AFKRelay" / "Audio" / "lobby-relay.wav"
+OUTPUT = Path(__file__).resolve().parents[1] / "AFKRelay" / "Audio" / "lobby-relay.m4a"
+# Ninety seconds of stereo PCM is 15 MB; the same loop as AAC is 1.4 MB. The
+# track fades from and to silence, so the encoder's padding leaves no seam.
+AAC_BITRATE = 128_000
 TAU = 2 * math.pi
 
 left = array("f", [0.0]) * round(DURATION * SAMPLE_RATE)
@@ -256,7 +261,7 @@ def compose() -> None:
         add_tone(bar * BAR + 2 * BEAT, 1.35, answer, 0.032, 0.58, "glass")
 
 
-def write_wave() -> None:
+def write_audio() -> None:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     peak = max(max(abs(value) for value in left), max(abs(value) for value in right), 1e-9)
     gain = 0.86 / peak
@@ -272,14 +277,33 @@ def write_wave() -> None:
         value_r = math.tanh(sample_r * gain * 1.18) / math.tanh(1.18) * fade
         frames.extend(struct.pack("<hh", round(value_l * 32767), round(value_r * 32767)))
 
-    with wave.open(str(OUTPUT), "wb") as output:
-        output.setnchannels(2)
-        output.setsampwidth(2)
-        output.setframerate(SAMPLE_RATE)
-        output.writeframes(frames)
+    with tempfile.TemporaryDirectory() as scratch:
+        intermediate = Path(scratch) / "lobby-relay.wav"
+        with wave.open(str(intermediate), "wb") as output:
+            output.setnchannels(2)
+            output.setsampwidth(2)
+            output.setframerate(SAMPLE_RATE)
+            output.writeframes(frames)
+        encode(intermediate, OUTPUT)
+
+
+def encode(source: Path, destination: Path) -> None:
+    subprocess.run(
+        [
+            "afconvert",
+            "-f", "m4af",
+            "-d", "aac",
+            "-b", str(AAC_BITRATE),
+            "-q", "127",
+            "-s", "3",
+            str(source),
+            str(destination),
+        ],
+        check=True,
+    )
 
 
 if __name__ == "__main__":
     compose()
-    write_wave()
+    write_audio()
     print(f"Wrote {OUTPUT} ({DURATION:.1f}s)")

@@ -7,9 +7,13 @@ final class DiagnosticCatalog: ArenaPresentationCatalog {
 
     private var textureCache: [String: SKTexture] = [:]
 
+    /// Cues stay uncompressed so they start on the frame they are asked for.
+    /// The ninety-second lobby loop is AAC instead: encoded it costs 1.4 MB
+    /// rather than 15 MB, and its ends are silent, so the encoder's padding
+    /// leaves no audible seam at the loop point.
     func soundFileName(for role: PresentationSoundRole) -> String? {
         switch role {
-        case .lobbyMusic: "lobby-relay.wav"
+        case .lobbyMusic: "lobby-relay.m4a"
         case .buttonPress: "button-press.wav"
         case .gameOver: "game-over.wav"
         case .sweepTelegraph: "sweep-telegraph.wav"
