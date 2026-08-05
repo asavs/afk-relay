@@ -42,4 +42,5 @@ enum PresentationSoundRole: String, CaseIterable, Sendable {
     case playerDamageImpact
     case friendlyFireImpact
     case friendlyFireDiscovery
+    case friendlyFireDefeat
 }

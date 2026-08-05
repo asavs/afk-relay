@@ -25,9 +25,24 @@ final class ArenaRenderer {
     private var viewportSize: CGSize = .zero
     private var arenaSize = CGSize(width: 1000, height: 1500)
     private var soundEffectsEnabled = true
+    private let soundActions: [PresentationSoundRole: SKAction]
 
     init(catalog: any ArenaPresentationCatalog = DiagnosticCatalog()) {
         self.catalog = catalog
+        soundActions = Dictionary(
+            uniqueKeysWithValues:
+            PresentationSoundRole.allCases.compactMap { role in
+                catalog.soundFileName(for: role).map {
+                    (
+                        role,
+                        SKAction.playSoundFileNamed(
+                            $0,
+                            waitForCompletion: false
+                        )
+                    )
+                }
+            }
+        )
         configureNodeTree()
     }
 
@@ -642,6 +657,9 @@ final class ArenaRenderer {
             for: newImpacts,
             accessibility: accessibility
         )
+        for soundRole in ArenaImpactSoundPolicy.roles(for: newImpacts) {
+            playSound(for: soundRole, on: impactLayer)
+        }
 
         for impact in newImpacts {
             let role: PresentationRole = impact.kind == .friendlyFire
@@ -655,13 +673,6 @@ final class ArenaRenderer {
             apply(style, to: node)
             node.zPosition = 12
             impactLayer.addChild(node)
-
-            let soundRole: PresentationSoundRole = switch (impact.kind, impact.isEmphasized) {
-            case (.playerDamage, _): .playerDamageImpact
-            case (.friendlyFire, true): .friendlyFireDiscovery
-            case (.friendlyFire, false): .friendlyFireImpact
-            }
-            playSound(for: soundRole, on: node)
 
             // The discovery hit is the loudest effect in the game: a longer,
             // larger burst plus an expanding ring (static ring under Reduce
@@ -840,11 +851,11 @@ final class ArenaRenderer {
 
     private func playSound(for role: PresentationSoundRole, on node: SKNode) {
         guard soundEffectsEnabled,
-              let fileName = catalog.soundFileName(for: role)
+              let action = soundActions[role]
         else {
             return
         }
-        node.run(.playSoundFileNamed(fileName, waitForCompletion: false))
+        node.run(action)
     }
 
     private func makeLabel() -> SKLabelNode {

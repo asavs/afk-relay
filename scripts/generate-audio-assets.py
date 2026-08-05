@@ -108,6 +108,18 @@ def main() -> None:
         * (0.38 * math.sin(2 * math.pi * 540 * t) + 0.31 * math.sin(2 * math.pi * 810 * t)
            + 0.23 * math.sin(2 * math.pi * 1080 * t) + 0.10 * chirp(t, d, 900, 1500)),
     )
+    # A relay being severed: a dry conductor snap, a descending two-tone
+    # break, then a compact low confirmation. Kept short so a kill reads as
+    # final without masking the next telegraph.
+    write(
+        "friendly-fire-defeat.wav",
+        0.46,
+        lambda t, d: envelope(t, d, attack=0.001, release=0.18)
+        * (0.30 * noise_values[int(t * SAMPLE_RATE)] * math.exp(-52 * t)
+           + 0.38 * chirp(t, d, 610, 138)
+           + 0.24 * chirp(t, d, 457, 92)
+           + 0.18 * math.sin(2 * math.pi * 73 * t) * min(1.0, t / 0.055)),
+    )
 
 
 if __name__ == "__main__":

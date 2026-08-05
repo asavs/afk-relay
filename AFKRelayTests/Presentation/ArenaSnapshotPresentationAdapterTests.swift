@@ -123,4 +123,40 @@ struct ArenaSnapshotPresentationAdapterTests {
         let expectedHz = Int((1 / ArenaSimulation.fixedTimeStep).rounded())
         #expect(rendered.diagnostics?.fixedStepHz == expectedHz)
     }
+
+    @Test("A same-step defeat marks only its matching damage impact")
+    func defeatCorrelation() throws {
+        let simulation = ArenaSimulation()
+        let enemies = simulation.snapshot.enemies
+        let defeated = try #require(enemies.first)
+        let grazedID = defeated.id + 100
+        let events: [GameEvent] = [
+            .damaged(
+                target: grazedID,
+                source: defeated.id,
+                amount: 1,
+                position: .zero
+            ),
+            .damaged(
+                target: defeated.id,
+                source: grazedID,
+                amount: 1,
+                position: defeated.position
+            ),
+            .enemyDefeated(defeated.id),
+        ]
+
+        let rendered = ArenaSnapshotPresentationAdapter.makeSnapshot(
+            from: simulation.snapshot,
+            events: events
+        )
+
+        #expect(rendered.impacts.count == 2)
+        #expect(rendered.impacts.first {
+            $0.targetEntityID == "E\(grazedID)"
+        }?.isDefeat == false)
+        #expect(rendered.impacts.first {
+            $0.targetEntityID == "E\(defeated.id)"
+        }?.isDefeat == true)
+    }
 }

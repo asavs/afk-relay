@@ -25,12 +25,17 @@ enum ArenaSnapshotPresentationAdapter {
         // The tick that completes friendly-fire discovery marks its
         // friendly-fire impacts for amplified presentation (REQ-GAME-007).
         let emphasizeFriendlyFire = events.contains(.tutorialCompleted)
+        let defeatedEnemyIDs = Set(events.compactMap { event -> Int? in
+            guard case let .enemyDefeated(id) = event else { return nil }
+            return id
+        })
         let impacts = events.enumerated().compactMap { index, event in
             makeImpact(
                 event,
                 index: index,
                 snapshot: snapshot,
-                emphasizeFriendlyFire: emphasizeFriendlyFire
+                emphasizeFriendlyFire: emphasizeFriendlyFire,
+                defeatedEnemyIDs: defeatedEnemyIDs
             )
         }
         let vectors = makeVectors(
@@ -230,7 +235,8 @@ enum ArenaSnapshotPresentationAdapter {
         _ event: GameEvent,
         index: Int,
         snapshot: ArenaSnapshot,
-        emphasizeFriendlyFire: Bool
+        emphasizeFriendlyFire: Bool,
+        defeatedEnemyIDs: Set<Int>
     ) -> ArenaRenderImpact? {
         guard case let .damaged(target, source, _, position) = event else {
             return nil
@@ -246,6 +252,7 @@ enum ArenaSnapshotPresentationAdapter {
             sourceEntityID: "E\(source)",
             targetEntityID: "E\(target)",
             kind: kind,
+            isDefeat: kind == .friendlyFire && defeatedEnemyIDs.contains(target),
             isEmphasized: emphasizeFriendlyFire && kind == .friendlyFire
         )
     }

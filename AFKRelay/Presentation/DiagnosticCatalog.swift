@@ -23,6 +23,7 @@ final class DiagnosticCatalog: ArenaPresentationCatalog {
         case .playerDamageImpact: "player-damage.wav"
         case .friendlyFireImpact: "friendly-fire.wav"
         case .friendlyFireDiscovery: "friendly-fire-discovery.wav"
+        case .friendlyFireDefeat: "friendly-fire-defeat.wav"
         }
     }
 
