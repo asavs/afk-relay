@@ -20,12 +20,22 @@ final class PresentationSoundPlayer {
         catalog: any ArenaPresentationCatalog,
         settings: AudioSettings = .enabled
     ) {
+        Self.configureAudioSession()
         self.settings = settings
         effectPlayers[.buttonPress] = makePlayer(.buttonPress, from: catalog)
         effectPlayers[.gameOver] = makePlayer(.gameOver, from: catalog)
         musicPlayer = makePlayer(.lobbyMusic, from: catalog)
         musicPlayer?.numberOfLoops = -1
         musicPlayer?.volume = 0
+    }
+
+    /// Game audio is complementary rather than essential: it follows the
+    /// Ring/Silent switch and mixes with audio the player already has running.
+    private static func configureAudioSession() {
+        try? AVAudioSession.sharedInstance().setCategory(
+            .ambient,
+            mode: .default
+        )
     }
 
     func play(_ role: PresentationSoundRole) {
