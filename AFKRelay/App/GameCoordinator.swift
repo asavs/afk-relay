@@ -70,6 +70,11 @@ final class GameCoordinator {
             arenaScene.soundEffectsEnabled = audioSettings.soundEffectsEnabled
         }
     }
+    var hapticsEnabled: Bool {
+        didSet {
+            composition.hapticPreferencesStore.save(isEnabled: hapticsEnabled)
+        }
+    }
 
     @ObservationIgnored let arenaScene: ArenaScene
     @ObservationIgnored private let composition: AppComposition
@@ -93,6 +98,7 @@ final class GameCoordinator {
         self.composition = composition
         let audioSettings = composition.audioPreferencesStore.load()
         self.audioSettings = audioSettings
+        hapticsEnabled = composition.hapticPreferencesStore.load()
         soundPlayer = PresentationSoundPlayer(
             catalog: composition.presentationCatalog,
             settings: audioSettings

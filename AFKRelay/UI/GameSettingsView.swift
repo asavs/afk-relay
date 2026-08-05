@@ -3,6 +3,7 @@ import SwiftUI
 struct GameSettingsView: View {
     @Binding var diagnostics: DiagnosticsOptions
     @Binding var audioSettings: AudioSettings
+    @Binding var hapticsEnabled: Bool
 
     let refreshState: WalletRefreshPresentationState
     let onRefreshSteps: @MainActor () -> Void
@@ -33,7 +34,7 @@ struct GameSettingsView: View {
                     Text("Not seeing your steps? Steps access lives in Health › Sharing › Apps › AFK Relay, not in this app’s Settings page.")
                 }
 
-                Section("Audio") {
+                Section("Feedback") {
                     Toggle(isOn: $audioSettings.musicEnabled) {
                         Label("Music", systemImage: "music.note")
                     }
@@ -43,6 +44,11 @@ struct GameSettingsView: View {
                         Label("Sound Effects", systemImage: "speaker.wave.2")
                     }
                     .accessibilityIdentifier("sound-effects-enabled")
+
+                    Toggle(isOn: $hapticsEnabled) {
+                        Label("Haptics", systemImage: "iphone.radiowaves.left.and.right")
+                    }
+                    .accessibilityIdentifier("haptics-enabled")
                 }
 
                 DiagnosticsSettingsView(options: $diagnostics)

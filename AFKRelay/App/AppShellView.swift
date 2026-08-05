@@ -52,7 +52,7 @@ struct AppShellView: View {
         }
         .preferredColorScheme(.dark)
         .sensoryFeedback(trigger: coordinator.hapticEvent) { _, event in
-            guard let event else { return nil }
+            guard coordinator.hapticsEnabled, let event else { return nil }
             return switch event.role {
             case .buttonPress:
                 .impact(weight: .light)
@@ -73,6 +73,7 @@ struct AppShellView: View {
             GameSettingsView(
                 diagnostics: $coordinator.diagnosticsOptions,
                 audioSettings: $coordinator.audioSettings,
+                hapticsEnabled: $coordinator.hapticsEnabled,
                 refreshState: coordinator.refreshState,
                 onRefreshSteps: refreshStepsWithFeedback,
                 onOpenSystemSettings: openSystemSettingsWithFeedback,
