@@ -1,0 +1,37 @@
+# Build this app and send it to App Store Connect.
+#
+# Almost all of the work lives in asavs/ios-kit, so this file stays small enough
+# to read in one go. What is here is only what differs for AFK Relay.
+#
+# Push-triggered on purpose: the whole point of building in CI is that a push
+# from any machine — including one with no Mac — produces an installable build.
+#
+# The build number comes from App Store Connect rather than from a run counter,
+# so it stays correct whether a build came from here or from a laptop.
+
+name: TestFlight
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      validate-only:
+        description: Build and validate against Apple, but do not upload
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  testflight:
+    uses: asavs/ios-kit/.github/workflows/release.yml@main
+    with:
+      project: afk-relay
+      mode: head
+      # Pushes validate without uploading until this pipeline has proven itself
+      # end to end from a runner. Flip to `false` for real TestFlight builds on
+      # every push; dispatch can already choose either.
+      validate-only: ${{ github.event_name == 'push' || inputs.validate-only }}
+    secrets: inherit
