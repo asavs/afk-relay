@@ -142,21 +142,23 @@ def main():
              "-k", keychain_password, KEYCHAIN])
         print("ok")
 
-        step(6, "Adding it to the keychain search list")
+        step(6, "Keeping it out of the keychain search list")
+        # scripts/device-test.sh adds it for the length of a build. Kept in the
+        # list, its same-team identity is visible to every other project's
+        # automatic signing, which can pick it while it is locked and fail with
+        # errSecInternalComponent. An earlier version of this script added it,
+        # so take it out if it is there.
         existing = [
             line.strip().strip('"')
             for line in run(["security", "list-keychains", "-d", "user"]).splitlines()
             if line.strip()
         ]
         if KEYCHAIN in existing:
-            print("already present")
-        else:
-            # -s replaces the list, so the current entries are preserved
-            # explicitly. Dropping the login keychain here would break
-            # unrelated tools.
             run(["security", "list-keychains", "-d", "user", "-s",
-                 *existing, KEYCHAIN])
-            print(f"ok ({len(existing) + 1} keychains)")
+                 *[path for path in existing if path != KEYCHAIN]])
+            print("removed from the search list")
+        else:
+            print("ok, not in the search list")
 
         step(7, "Recording the keychain password")
         os.makedirs(os.path.dirname(ENV_FILE), exist_ok=True)
