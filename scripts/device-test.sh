@@ -8,6 +8,12 @@
 # non-GUI session either. So signing lives in its own keychain with its own
 # random password, set up once by scripts/setup-signing-keychain.py.
 #
+# That keychain joins the user keychain search list only while this script
+# builds, then the list goes back to what it was. Left there permanently, every
+# other project's Xcode build on this Mac sees its identity, which belongs to the
+# same team, and automatic signing can pick it while the keychain is locked:
+# codesign then fails with errSecInternalComponent (ios-app-starter, 2026-11-09).
+#
 # Environment, from the same file the release scripts read:
 #   AFKRELAY_KEYCHAIN_PATH, AFKRELAY_KEYCHAIN_PASSWORD
 #   ASC_KEY_ID, ASC_ISSUER_ID   (so provisioning profiles update headlessly)
@@ -42,6 +48,27 @@ if ! xcrun devicectl list devices 2>/dev/null | grep -q "$DEVICE"; then
 fi
 
 security unlock-keychain -p "$AFKRELAY_KEYCHAIN_PASSWORD" "$AFKRELAY_KEYCHAIN_PATH"
+
+# Put the signing keychain first in the search list for this build only, and
+# restore the list as it was on every exit, a failed build included.
+saved_keychains=()
+while IFS= read -r line; do
+    line="${line#"${line%%[![:space:]]*}"}"; line="${line%\"}"; line="${line#\"}"
+    [ -n "$line" ] && saved_keychains+=("$line")
+done < <(security list-keychains -d user)
+if [ "${#saved_keychains[@]}" -eq 0 ]; then
+    echo "could not read the user keychain search list" >&2
+    exit 1
+fi
+restore_keychains() {
+    security list-keychains -d user -s "${saved_keychains[@]}"
+}
+trap restore_keychains EXIT
+build_keychains=("$AFKRELAY_KEYCHAIN_PATH")
+for keychain in "${saved_keychains[@]}"; do
+    [ "$keychain" = "$AFKRELAY_KEYCHAIN_PATH" ] || build_keychains+=("$keychain")
+done
+security list-keychains -d user -s "${build_keychains[@]}"
 
 authentication=()
 if [ -n "${ASC_KEY_ID:-}" ] && [ -n "${ASC_ISSUER_ID:-}" ]; then
